@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Event Booking App"
-    API_V1_STR: str = "/api/v1"
+    API_STR: str = "/api"
     
     # Database
     DATABASE_URL: str
