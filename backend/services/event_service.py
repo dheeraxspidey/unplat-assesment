@@ -52,7 +52,12 @@ class EventService:
             raise HTTPException(status_code=404, detail="Event not found")
          
          event.status = EventStatus.CANCELLED
-         # Logic for cancelling bookings will go here in Phase 4
+         
+         # Cascade cancellation to bookings
+         from models.booking import Booking, BookingStatus
+         db.query(Booking).filter(Booking.event_id == event_id).update(
+             {Booking.status: BookingStatus.CANCELLED_BY_ORGANIZER}, synchronize_session=False
+         )
          
          db.commit()
          db.refresh(event)
