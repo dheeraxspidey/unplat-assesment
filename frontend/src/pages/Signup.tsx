@@ -99,24 +99,26 @@ export default function Signup() {
 
                         {role === "ATTENDEE" && (
                             <div className="space-y-3 animate-in fade-in slide-in-from-top-2">
-                                <Label>Interests (for recommendations)</Label>
-                                <div className="grid grid-cols-2 gap-2">
-                                    {INTEREST_OPTIONS.map((interest) => (
-                                        <div key={interest} className="flex items-center space-x-2">
-                                            <input
-                                                type="checkbox"
-                                                id={`interest-${interest}`}
-                                                className="rounded border-gray-300 text-primary focus:ring-primary h-4 w-4"
-                                                onChange={(e) => handleInterestChange(interest, e.target.checked)}
-                                            />
-                                            <label
-                                                htmlFor={`interest-${interest}`}
-                                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                <Label className="text-base font-semibold">Interests (Select at least one)</Label>
+                                <div className="flex flex-wrap gap-2 mt-2">
+                                    {INTEREST_OPTIONS.map((interest) => {
+                                        const isSelected = selectedInterests.includes(interest)
+                                        return (
+                                            <div
+                                                key={interest}
+                                                onClick={() => handleInterestChange(interest, !isSelected)}
+                                                className={`
+                                                        px-4 py-2 rounded-full text-sm font-medium cursor-pointer transition-all duration-200 border
+                                                        ${isSelected
+                                                        ? "bg-primary text-primary-foreground border-primary shadow-md scale-105"
+                                                        : "bg-background text-muted-foreground border-muted-foreground/30 hover:border-primary/50 hover:bg-muted"
+                                                    }
+                                                    `}
                                             >
                                                 {interest}
-                                            </label>
-                                        </div>
-                                    ))}
+                                            </div>
+                                        )
+                                    })}
                                 </div>
                             </div>
                         )}

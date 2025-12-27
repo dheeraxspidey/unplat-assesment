@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import axios from "axios"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,9 +10,6 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card"
-import {
-    ScrollArea
-} from "@/components/ui/scroll-area"
 import {
     Dialog,
     DialogContent,
@@ -38,8 +35,12 @@ import {
     TableRow,
 } from "@/components/ui/table"
 import { useToast } from "@/components/ui/use-toast"
-import { Plus, BarChart3, Calendar, FileText, UploadCloud, Edit, Trash2, ChevronLeft, ChevronRight, ArrowUp, ArrowDown } from "lucide-react"
+import { Plus, BarChart3, Calendar as CalendarIcon, FileText, UploadCloud, Edit, Trash2, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, X, Upload } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { cn } from "@/lib/utils"
+import { format } from "date-fns"
 
 interface Event {
     id: number
@@ -60,16 +61,31 @@ export default function OrganizerDashboard() {
     const [isLoading, setIsLoading] = useState(false)
     const { toast } = useToast()
     const [open, setOpen] = useState(false)
-    const [publishStatus, setPublishStatus] = useState("DRAFT")
 
     const [editingEvent, setEditingEvent] = useState<Event | null>(null)
     const [isEditOpen, setIsEditOpen] = useState(false)
     const [eventToCancel, setEventToCancel] = useState<Event | null>(null)
     const [selectedFileName, setSelectedFileName] = useState<string | null>(null)
+    const fileInputRef = useRef<HTMLInputElement>(null)
+
+    // Date & Time State for Create Event
+    const [date, setDate] = useState<Date | undefined>(undefined)
+    const [time, setTime] = useState("12:00")
+    // State to control calendar popover visibility
+    const [isCalendarOpen, setIsCalendarOpen] = useState(false)
+    // Track intended status for event creation
+    const [submitStatus, setSubmitStatus] = useState<"DRAFT" | "PUBLISHED">("DRAFT")
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             setSelectedFileName(e.target.files[0].name)
+        }
+    }
+
+    const removeSelectedFile = () => {
+        setSelectedFileName(null)
+        if (fileInputRef.current) {
+            fileInputRef.current.value = ""
         }
     }
 
@@ -113,7 +129,6 @@ export default function OrganizerDashboard() {
         if (!token) return
         try {
             const skip = (page - 1) * itemsPerPage
-            // Pass sort params and limit+1 for pagination check
             const response = await axios.get(`http://localhost:8000/api/events/my-events?skip=${skip}&limit=${itemsPerPage + 1}&sort_by=${sortBy}&sort_desc=${sortDesc}`, {
                 headers: { Authorization: `Bearer ${token}` }
             })
@@ -126,15 +141,12 @@ export default function OrganizerDashboard() {
 
     const handleSort = (field: string) => {
         if (sortBy === field) {
-            // Toggle order if clicking same field
             setSortDesc(!sortDesc)
         } else {
-            // New field, default to ascending (except maybe date which is usually desc? User said default sort by date. 
-            // Usually valid default is ascending for text/price, descending for date. But let's stick to simple toggle.)
             setSortBy(field)
             setSortDesc(false)
         }
-        setPage(1) // Reset to first page on sort change
+        setPage(1)
     }
 
     const getImageUrl = (imageId?: string) => {
@@ -146,8 +158,19 @@ export default function OrganizerDashboard() {
         e.preventDefault()
         setIsLoading(true)
         const token = localStorage.getItem("token")
+
+        // Use state-based status
+        const status = submitStatus;
+
         const formData = new FormData(e.currentTarget)
-        formData.append("status", publishStatus)
+        formData.set("status", status)
+
+        // Handle Date & Time manually
+        if (date) {
+            const dateStr = format(date, "yyyy-MM-dd")
+            const dateTime = new Date(`${dateStr}T${time}`)
+            formData.set("date", dateTime.toISOString())
+        }
 
         try {
             await axios.post("http://localhost:8000/api/events/", formData, {
@@ -156,11 +179,15 @@ export default function OrganizerDashboard() {
                 }
             })
             toast({
-                title: publishStatus === "PUBLISHED" ? "Event Published!" : "Draft Saved",
-                description: publishStatus === "PUBLISHED" ? "Your event is now live." : "You can publish it later."
+                title: status === "PUBLISHED" ? "Event Published!" : "Draft Saved",
+                description: status === "PUBLISHED" ? "Your event is now live." : "You can publish it later."
             })
             setOpen(false)
+            // Reset form state
             setSelectedFileName(null)
+            setDate(undefined)
+            setTime("12:00")
+            if (fileInputRef.current) fileInputRef.current.value = ""
             fetchMyEvents()
         } catch (error) {
             toast({ title: "Failed to create event", variant: "destructive" })
@@ -175,7 +202,6 @@ export default function OrganizerDashboard() {
         setIsLoading(true)
         const token = localStorage.getItem("token")
 
-        // Construct JSON payload for update, matching EventUpdate schema
         const formData = new FormData(e.currentTarget)
         const data = {
             title: formData.get("title"),
@@ -185,7 +211,6 @@ export default function OrganizerDashboard() {
             total_seats: Number(formData.get("total_seats")),
             price: Number(formData.get("price")),
             description: formData.get("description"),
-            // image_url handling omitted for simplicity in update, or add if needed
         }
 
         try {
@@ -207,6 +232,25 @@ export default function OrganizerDashboard() {
             })
         } finally {
             setIsLoading(false)
+        }
+    }
+
+    const handleQuickPublish = async (event: Event) => {
+        const token = localStorage.getItem("token")
+        try {
+            await axios.put(`http://localhost:8000/api/events/${event.id}`,
+                { status: "PUBLISHED" },
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        "Content-Type": "application/json"
+                    }
+                }
+            )
+            toast({ title: "Event Published", description: `${event.title} is now live.` })
+            fetchMyEvents()
+        } catch (error) {
+            toast({ title: "Failed to publish", variant: "destructive" })
         }
     }
 
@@ -245,109 +289,185 @@ export default function OrganizerDashboard() {
                             <Plus className="mr-2 h-5 w-5" /> Create Event
                         </Button>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden rounded-xl">
+                    {/* Increased width to max-w-3xl (approx 768px/48rem) for better spacing */}
+                    <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden rounded-xl">
                         <DialogHeader className="p-6 pb-2">
                             <DialogTitle className="text-2xl">Create New Event</DialogTitle>
                             <DialogDescription>
                                 Fill in the details below to launch your next big event.
                             </DialogDescription>
                         </DialogHeader>
-                        <ScrollArea className="flex-1 p-6 pt-2">
-                            <form id="create-event-form" onSubmit={handleCreateEvent} className="space-y-6">
-                                {/* Form content remains same as previous but inside scroll area */}
-                                <div className="space-y-4">
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="image">Event Cover Image</Label>
-                                        <div className="flex flex-col gap-4">
-                                            <div className="flex items-center justify-center w-full">
-                                                <label htmlFor="image-upload" className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted/50 hover:bg-muted transition-colors">
-                                                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                                                        <UploadCloud className="w-8 h-8 mb-2 text-muted-foreground" />
-                                                        <p className="text-sm text-muted-foreground">
-                                                            {selectedFileName ? (
-                                                                <span className="text-primary font-medium">{selectedFileName}</span>
-                                                            ) : (
-                                                                <span><span className="font-semibold">Click to upload</span> or drag and drop</span>
-                                                            )}
-                                                        </p>
+
+                        {/* Added overflow-x-hidden to prevent horizontal scrolling */}
+                        <div className="flex-1 overflow-y-auto overflow-x-hidden">
+                            <div className="p-6 pt-2">
+                                <form id="create-event-form" onSubmit={handleCreateEvent} className="space-y-6">
+                                    <div className="space-y-4">
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="image">Event Cover Image</Label>
+                                            <div className="flex flex-col gap-4">
+                                                <div className="flex items-center justify-center w-full">
+                                                    <label htmlFor="image-upload" className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted/50 hover:bg-muted transition-colors">
+                                                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                                            <UploadCloud className="w-8 h-8 mb-2 text-muted-foreground" />
+                                                            <div className="text-sm text-muted-foreground text-center">
+                                                                {selectedFileName ? (
+                                                                    <div className="flex items-center justify-center gap-2 text-primary font-medium">
+                                                                        {selectedFileName}
+                                                                        <Button
+                                                                            type="button"
+                                                                            variant="ghost"
+                                                                            size="sm"
+                                                                            className="h-6 w-6 p-0 rounded-full hover:bg-destructive/10 hover:text-destructive"
+                                                                            onClick={(e) => {
+                                                                                e.preventDefault();
+                                                                                removeSelectedFile();
+                                                                            }}
+                                                                        >
+                                                                            <X className="h-4 w-4" />
+                                                                        </Button>
+                                                                    </div>
+                                                                ) : (
+                                                                    <span><span className="font-semibold">Click to upload</span> or drag and drop</span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        <input
+                                                            ref={fileInputRef}
+                                                            id="image-upload"
+                                                            name="image_file"
+                                                            type="file"
+                                                            className="hidden"
+                                                            accept="image/*"
+                                                            onChange={handleFileChange}
+                                                        />
+                                                    </label>
+                                                </div>
+
+                                                <div className="relative">
+                                                    <div className="absolute inset-0 flex items-center">
+                                                        <span className="w-full border-t" />
                                                     </div>
-                                                    <input id="image-upload" name="image_file" type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
-                                                </label>
-                                            </div>
-
-                                            <div className="relative">
-                                                <div className="absolute inset-0 flex items-center">
-                                                    <span className="w-full border-t" />
+                                                    <div className="relative flex justify-center text-xs uppercase">
+                                                        <span className="bg-background px-2 text-muted-foreground">Or using URL</span>
+                                                    </div>
                                                 </div>
-                                                <div className="relative flex justify-center text-xs uppercase">
-                                                    <span className="bg-background px-2 text-muted-foreground">Or using URL</span>
+
+                                                <div className="grid gap-2">
+                                                    <Label htmlFor="image_url" className="sr-only">Image URL</Label>
+                                                    <Input
+                                                        id="image_url"
+                                                        name="image_url"
+                                                        placeholder="Paste image URL here (https://...)"
+                                                        disabled={!!selectedFileName}
+                                                    />
                                                 </div>
                                             </div>
+                                        </div>
 
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="title">Event Title</Label>
+                                            <Input id="title" name="title" placeholder="e.g. Neon Dreams Concert" required className="h-12" />
+                                        </div>
+
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <div className="grid gap-2">
-                                                <Label htmlFor="image_url" className="sr-only">Image URL</Label>
-                                                <Input id="image_url" name="image_url" placeholder="Paste image URL here (https://...)" />
+                                                <Label htmlFor="type">Event Type</Label>
+                                                <Select name="event_type" defaultValue="CONCERT">
+                                                    <SelectTrigger className="h-12">
+                                                        <SelectValue placeholder="Select type" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="CONCERT">Concert</SelectItem>
+                                                        <SelectItem value="CONFERENCE">Conference</SelectItem>
+                                                        <SelectItem value="WORKSHOP">Workshop</SelectItem>
+                                                        <SelectItem value="THEATER">Theater</SelectItem>
+                                                        <SelectItem value="OTHER">Other</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            <div className="grid gap-2">
+                                                <Label>Date & Time</Label>
+                                                <div className="flex gap-2">
+                                                    <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+                                                        <PopoverTrigger asChild>
+                                                            <Button
+                                                                variant={"outline"}
+                                                                className={cn(
+                                                                    "w-full justify-start text-left font-normal h-12",
+                                                                    !date && "text-muted-foreground"
+                                                                )}
+                                                            >
+                                                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                                                {date ? format(date, "PPP") : <span>Pick a date</span>}
+                                                            </Button>
+                                                        </PopoverTrigger>
+                                                        <PopoverContent className="w-auto p-0">
+                                                            <Calendar
+                                                                mode="single"
+                                                                selected={date}
+                                                                onSelect={(newDate) => {
+                                                                    setDate(newDate)
+                                                                    setIsCalendarOpen(false)
+                                                                }}
+                                                                initialFocus
+                                                                disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                                                            />
+                                                        </PopoverContent>
+                                                    </Popover>
+                                                    <Input
+                                                        type="time"
+                                                        value={time}
+                                                        onChange={(e) => setTime(e.target.value)}
+                                                        className="w-[120px] h-12"
+                                                    />
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
 
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="title">Event Title</Label>
-                                        <Input id="title" name="title" placeholder="e.g. Neon Dreams Concert" required className="h-12" />
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-4">
                                         <div className="grid gap-2">
-                                            <Label htmlFor="type">Event Type</Label>
-                                            <Select name="event_type" defaultValue="CONCERT">
-                                                <SelectTrigger className="h-12">
-                                                    <SelectValue placeholder="Select type" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="CONCERT">Concert</SelectItem>
-                                                    <SelectItem value="CONFERENCE">Conference</SelectItem>
-                                                    <SelectItem value="WORKSHOP">Workshop</SelectItem>
-                                                    <SelectItem value="THEATER">Theater</SelectItem>
-                                                    <SelectItem value="OTHER">Other</SelectItem>
-                                                </SelectContent>
-                                            </Select>
+                                            <Label htmlFor="location">Location</Label>
+                                            <Input id="location" name="location" placeholder="Venue address" required className="h-12" />
                                         </div>
+
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="grid gap-2">
+                                                <Label htmlFor="seats">Total Seats</Label>
+                                                <Input id="seats" name="total_seats" type="number" required min="1" defaultValue="1" className="h-12" />
+                                            </div>
+                                            <div className="grid gap-2">
+                                                <Label htmlFor="price">Price ($)</Label>
+                                                <Input id="price" name="price" type="number" required min="0" step="0.01" defaultValue="0" className="h-12" />
+                                            </div>
+                                        </div>
+
                                         <div className="grid gap-2">
-                                            <Label htmlFor="date">Date & Time</Label>
-                                            <Input id="date" name="date" type="datetime-local" required className="h-12" />
+                                            <Label htmlFor="description">Description</Label>
+                                            <Textarea id="description" name="description" placeholder="Tell people what this event is about..." className="min-h-[100px]" />
                                         </div>
                                     </div>
+                                </form>
+                            </div>
+                        </div>
 
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="location">Location</Label>
-                                        <Input id="location" name="location" placeholder="Venue address" required className="h-12" />
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="grid gap-2">
-                                            <Label htmlFor="seats">Total Seats</Label>
-                                            <Input id="seats" name="total_seats" type="number" required min="1" className="h-12" />
-                                        </div>
-                                        <div className="grid gap-2">
-                                            <Label htmlFor="price">Price ($)</Label>
-                                            <Input id="price" name="price" type="number" required min="0" step="0.01" className="h-12" />
-                                        </div>
-                                    </div>
-
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="description">Description</Label>
-                                        <Textarea id="description" name="description" placeholder="Tell people what this event is about..." className="min-h-[100px]" />
-                                    </div>
-                                </div>
-                            </form>
-                        </ScrollArea>
                         <DialogFooter className="p-6 border-t bg-muted/20 gap-2 sm:justify-between">
-                            <Button type="button" variant="ghost" onClick={() => setPublishStatus("DRAFT")} form="create-event-form">
+                            <Button
+                                type="submit"
+                                variant="ghost"
+                                onClick={() => setSubmitStatus("DRAFT")}
+                                form="create-event-form"
+                            >
                                 Save as Draft
                             </Button>
                             <div className="flex gap-2 w-full sm:w-auto">
                                 <Button type="button" variant="outline" onClick={() => setOpen(false)} className="w-full sm:w-auto">Cancel</Button>
-                                <Button type="submit" onClick={() => setPublishStatus("PUBLISHED")} form="create-event-form" disabled={isLoading} className="w-full sm:w-auto">
+                                <Button
+                                    type="submit"
+                                    onClick={() => setSubmitStatus("PUBLISHED")}
+                                    form="create-event-form"
+                                    disabled={isLoading}
+                                    className="w-full sm:w-auto"
+                                >
                                     {isLoading ? "Publishing..." : "Publish Event"}
                                 </Button>
                             </div>
@@ -361,7 +481,7 @@ export default function OrganizerDashboard() {
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Total Events</CardTitle>
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        <CalendarIcon className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">{stats.total_events}</div>
@@ -486,6 +606,17 @@ export default function OrganizerDashboard() {
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <div className="flex justify-end gap-2">
+                                                {event.status === "DRAFT" && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="text-primary hover:text-primary hover:bg-primary/10"
+                                                        onClick={() => handleQuickPublish(event)}
+                                                        title="Publish Event"
+                                                    >
+                                                        <Upload className="h-4 w-4" />
+                                                    </Button>
+                                                )}
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
@@ -540,7 +671,7 @@ export default function OrganizerDashboard() {
 
             {/* Edit DIALOG */}
             <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-                <DialogContent className="sm:max-w-2xl">
+                <DialogContent className="sm:max-w-3xl">
                     <DialogHeader>
                         <DialogTitle>Edit Event</DialogTitle>
                         <DialogDescription>
@@ -548,7 +679,7 @@ export default function OrganizerDashboard() {
                         </DialogDescription>
                     </DialogHeader>
                     {editingEvent && (
-                        <ScrollArea className="max-h-[80vh]">
+                        <div className="flex-1 overflow-y-auto max-h-[80vh] overflow-x-hidden">
                             <form onSubmit={handleUpdateEvent} className="grid gap-6 py-4 px-1">
                                 <div className="grid gap-2">
                                     <Label htmlFor="edit-title">Title</Label>
@@ -600,7 +731,7 @@ export default function OrganizerDashboard() {
                                     </Button>
                                 </DialogFooter>
                             </form>
-                        </ScrollArea>
+                        </div>
                     )}
                 </DialogContent>
             </Dialog>
@@ -631,8 +762,6 @@ export default function OrganizerDashboard() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-
         </div>
     )
 }
-

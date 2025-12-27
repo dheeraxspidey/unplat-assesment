@@ -211,9 +211,9 @@ export default function Explore() {
                                             if (range?.from) {
                                                 setDateRange({ start: range.from, end: range.to || null })
                                                 if (range.to) {
-                                                    setFilterLabel(`${range.from.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} - ${range.to.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`)
+                                                    setFilterLabel(`${range.from.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })} - ${range.to.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`)
                                                 } else {
-                                                    setFilterLabel(`From ${range.from.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`)
+                                                    setFilterLabel(`From ${range.from.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`)
                                                 }
                                             } else {
                                                 setDateRange({ start: null, end: null })
