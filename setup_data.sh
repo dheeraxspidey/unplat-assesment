@@ -24,6 +24,7 @@ login() {
   local email=$1
   local password=$2
   local role=$3
+  local interests=${4:-"[]"}
   
   echo "Creating User $email (ignoring if exists)..." >&2
   curl -s -X POST "$BASE_URL/auth/signup" \
@@ -32,7 +33,8 @@ login() {
       "email": "'"$email"'",
       "password": "'"$password"'",
       "full_name": "'"$role"' User",
-      "role": "'"$role"'"
+      "role": "'"$role"'",
+      "interests": '"$interests"'
     }' > /dev/null
   
   echo "Logging in as $role..." >&2
@@ -128,7 +130,7 @@ create_event_url_org2 "Blockchain Summit" "2026-09-05T09:00:00" "Grand Hotel" 40
 
 # --- 3. SETUP ATTENDEE & BOOK ---
 echo -e "\n3. Attendee Booking..."
-ATT_TOKEN=$(login "$ATTENDEE_EMAIL" "$ATTENDEE_PASSWORD" "ATTENDEE")
+ATT_TOKEN=$(login "$ATTENDEE_EMAIL" "$ATTENDEE_PASSWORD" "ATTENDEE" '["Music", "Technology"]')
 
 # Get IDs of first 3 events
 EVENTS=$(curl -s "$BASE_URL/events/" -H "Authorization: Bearer $ATT_TOKEN" | grep -o '"id":[0-9]*' | head -3 | cut -d':' -f2)
@@ -142,7 +144,7 @@ for id in $EVENTS; do
 done
 
 echo -e "\n3b. Attendee 2 Booking..."
-ATT2_TOKEN=$(login "$ATTENDEE2_EMAIL" "$ATTENDEE2_PASSWORD" "ATTENDEE")
+ATT2_TOKEN=$(login "$ATTENDEE2_EMAIL" "$ATTENDEE2_PASSWORD" "ATTENDEE" '["WORKSHOP", "Art", "Theater"]')
 # Get IDs of next 2 events (offset 3)
 EVENTS2=$(curl -s "$BASE_URL/events/" -H "Authorization: Bearer $ATT2_TOKEN" | grep -o '"id":[0-9]*' | head -5 | tail -2 | cut -d':' -f2)
 

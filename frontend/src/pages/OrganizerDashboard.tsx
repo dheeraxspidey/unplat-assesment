@@ -540,7 +540,7 @@ export default function OrganizerDashboard() {
 
             {/* Edit DIALOG */}
             <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-                <DialogContent className="sm:max-w-[425px]">
+                <DialogContent className="sm:max-w-2xl">
                     <DialogHeader>
                         <DialogTitle>Edit Event</DialogTitle>
                         <DialogDescription>
@@ -549,29 +549,31 @@ export default function OrganizerDashboard() {
                     </DialogHeader>
                     {editingEvent && (
                         <ScrollArea className="max-h-[80vh]">
-                            <form onSubmit={handleUpdateEvent} className="grid gap-4 py-4 px-1">
+                            <form onSubmit={handleUpdateEvent} className="grid gap-6 py-4 px-1">
                                 <div className="grid gap-2">
                                     <Label htmlFor="edit-title">Title</Label>
                                     <Input id="edit-title" name="title" defaultValue={editingEvent.title} className="h-12" required />
                                 </div>
-                                <div className="grid gap-2">
-                                    <Label htmlFor="edit-type">Type</Label>
-                                    <Select name="event_type" defaultValue={editingEvent.event_type}>
-                                        <SelectTrigger className="h-12">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="CONCERT">Concert</SelectItem>
-                                            <SelectItem value="CONFERENCE">Conference</SelectItem>
-                                            <SelectItem value="WORKSHOP">Workshop</SelectItem>
-                                            <SelectItem value="THEATER">Theater</SelectItem>
-                                            <SelectItem value="OTHER">Other</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="grid gap-2">
-                                    <Label htmlFor="edit-date">Date</Label>
-                                    <Input id="edit-date" name="date" type="datetime-local" defaultValue={editingEvent.date} className="h-12" required />
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="edit-type">Type</Label>
+                                        <Select name="event_type" defaultValue={editingEvent.event_type}>
+                                            <SelectTrigger className="h-12">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="CONCERT">Concert</SelectItem>
+                                                <SelectItem value="CONFERENCE">Conference</SelectItem>
+                                                <SelectItem value="WORKSHOP">Workshop</SelectItem>
+                                                <SelectItem value="THEATER">Theater</SelectItem>
+                                                <SelectItem value="OTHER">Other</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="edit-date">Date</Label>
+                                        <Input id="edit-date" name="date" type="datetime-local" defaultValue={editingEvent.date} className="h-12" required />
+                                    </div>
                                 </div>
                                 <div className="grid gap-2">
                                     <Label htmlFor="edit-location">Location</Label>
@@ -591,8 +593,9 @@ export default function OrganizerDashboard() {
                                     <Label htmlFor="edit-description">Description</Label>
                                     <Textarea id="edit-description" name="description" defaultValue={editingEvent.description} className="min-h-[100px]" />
                                 </div>
-                                <DialogFooter className="pt-4">
-                                    <Button type="submit" className="w-full" disabled={isLoading}>
+                                <DialogFooter className="pt-4 sm:justify-end">
+                                    <Button type="button" variant="outline" onClick={() => setIsEditOpen(false)}>Cancel</Button>
+                                    <Button type="submit" disabled={isLoading}>
                                         Save Changes
                                     </Button>
                                 </DialogFooter>

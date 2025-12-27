@@ -8,8 +8,20 @@ from models.user import User
 from models.event import Event, EventStatus, EventType
 from schemas.event import EventCreate, EventResponse, EventUpdate
 from services.event_service import EventService
+from services.recommendation_service import RecommendationService
 
 router = APIRouter()
+
+@router.get("/recommendations", response_model=List[EventResponse])
+def get_recommendations(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(deps.get_current_active_user),
+    limit: int = 3
+) -> Any:
+    """
+    Get personalized event recommendations based on user interests and history.
+    """
+    return RecommendationService.get_keyword_recommendations(db, current_user.id, limit)
 
 @router.get("/", response_model=List[EventResponse])
 def read_events(

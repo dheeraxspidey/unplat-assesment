@@ -11,15 +11,29 @@ import { useToast } from "@/components/ui/use-toast"
 import { Lock, Mail, User, Shield } from "lucide-react"
 
 export default function Signup() {
-    const { register, handleSubmit, setValue } = useForm()
+    const { register, handleSubmit, setValue, watch } = useForm()
     const [loading, setLoading] = useState(false)
+    const [selectedInterests, setSelectedInterests] = useState<string[]>([])
+    const role = watch("role", "ATTENDEE")
+
+    // Available Interests
+    const INTEREST_OPTIONS = ["Music", "Technology", "Art", "Theater", "Workshops", "Concert", "Conference"]
+
+    const handleInterestChange = (interest: string, checked: boolean) => {
+        if (checked) {
+            setSelectedInterests(prev => [...prev, interest])
+        } else {
+            setSelectedInterests(prev => prev.filter(i => i !== interest))
+        }
+    }
     const navigate = useNavigate()
     const { toast } = useToast()
 
     const onSubmit = async (data: any) => {
         setLoading(true)
         try {
-            await axios.post("http://localhost:8000/api/auth/signup", data)
+            const payload = { ...data, interests: selectedInterests }
+            await axios.post("http://localhost:8000/api/auth/signup", payload)
             toast({ title: "Account created", description: "Please login with your new credentials." })
             navigate("/login")
         } catch (error) {
@@ -83,6 +97,30 @@ export default function Signup() {
                             </Select>
                         </div>
 
+                        {role === "ATTENDEE" && (
+                            <div className="space-y-3 animate-in fade-in slide-in-from-top-2">
+                                <Label>Interests (for recommendations)</Label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {INTEREST_OPTIONS.map((interest) => (
+                                        <div key={interest} className="flex items-center space-x-2">
+                                            <input
+                                                type="checkbox"
+                                                id={`interest-${interest}`}
+                                                className="rounded border-gray-300 text-primary focus:ring-primary h-4 w-4"
+                                                onChange={(e) => handleInterestChange(interest, e.target.checked)}
+                                            />
+                                            <label
+                                                htmlFor={`interest-${interest}`}
+                                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                            >
+                                                {interest}
+                                            </label>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
                         <Button type="submit" className="w-full" disabled={loading}>
                             {loading ? "Creating account..." : "Sign Up"}
                         </Button>
@@ -93,7 +131,7 @@ export default function Signup() {
                         Already have an account? <Link to="/login" className="text-primary hover:underline font-semibold">Log in</Link>
                     </div>
                 </CardFooter>
-            </Card>
-        </div>
+            </Card >
+        </div >
     )
 }

@@ -11,6 +11,7 @@ class UserBase(BaseModel):
 # Properties to receive via API on creation
 class UserCreate(UserBase):
     password: str
+    interests: Optional[list[str]] = []
 
 # Properties to receive via API on login
 class UserLogin(BaseModel):

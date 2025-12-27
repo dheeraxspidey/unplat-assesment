@@ -1,19 +1,13 @@
 import { useEffect, useState } from "react"
 import axios from "axios"
-import { Search, ChevronLeft, ChevronRight, ListFilter } from "lucide-react"
+import { Search, ChevronLeft, ChevronRight, CalendarIcon } from "lucide-react"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+
 import { EventCard } from "@/components/EventCard"
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 
 interface Event {
     id: number
@@ -80,34 +74,57 @@ export default function Explore() {
         setLoading(true)
         try {
             const skip = (page - 1) * itemsPerPage
-            let url = `http://localhost:8000/api/events/?status=PUBLISHED&skip=${skip}&limit=${itemsPerPage + 1}`
+            const token = localStorage.getItem("token")
+            let response
 
-            if (selectedType !== "ALL") {
-                url += `&type=${selectedType}`
-            }
-            if (debouncedSearch) {
-                url += `&search=${debouncedSearch}`
-            }
-            if (dateRange.start) {
-                url += `&start_date=${dateRange.start.toISOString()}`
-            }
-            if (dateRange.end) {
-                url += `&end_date=${dateRange.end.toISOString()}`
+            if (selectedType === "FOR_YOU") {
+                if (!token) {
+                    // Creating a "Login to see recommendations" placeholder effect by returning empty for now
+                    // Or could redirect.
+                    response = { data: [] }
+                } else {
+                    response = await axios.get(`http://localhost:8000/api/events/recommendations?limit=3`, {
+                        headers: { Authorization: `Bearer ${token}` }
+                    })
+                }
+            } else {
+                let url = `http://localhost:8000/api/events/?status=PUBLISHED&skip=${skip}&limit=${itemsPerPage + 1}`
+
+                if (selectedType !== "ALL") {
+                    url += `&type=${selectedType}`
+                }
+                if (debouncedSearch) {
+                    url += `&search=${debouncedSearch}`
+                }
+                if (dateRange.start) {
+                    url += `&start_date=${dateRange.start.toISOString()}`
+                }
+                if (dateRange.end) {
+                    url += `&end_date=${dateRange.end.toISOString()}`
+                }
+                response = await axios.get(url)
             }
 
-            const response = await axios.get(url)
+            // setEvents(response.data) -- logic continues below with pagination update
 
             setHasMore(response.data.length > itemsPerPage)
             setEvents(response.data.slice(0, itemsPerPage))
 
-        } catch (error) {
+        } catch (error: any) {
             console.error("Failed to fetch events", error)
+            setEvents([])
+            if (error.response && error.response.status === 401) {
+                // Token invalid/expired
+                localStorage.clear()
+                // Optional: window.location.href = '/login' or let the user handle it
+            }
         } finally {
             setLoading(false)
         }
     }
 
     const handleTabChange = (type: string) => {
+        setEvents([])
         setSelectedType(type)
         setPage(1)
     }
@@ -141,76 +158,73 @@ export default function Explore() {
             </section>
 
             {/* Categories & List */}
-            <Tabs defaultValue="ALL" className="w-full" onValueChange={handleTabChange}>
+            <Tabs value={selectedType} className="w-full" onValueChange={handleTabChange}>
                 <div className="flex items-center justify-between pb-4 overflow-x-auto gap-4">
                     <TabsList className="h-12 bg-muted/50 p-1">
                         <TabsTrigger value="ALL" className="h-full px-6 rounded-sm">All Events</TabsTrigger>
+                        {localStorage.getItem("role") !== "ORGANIZER" && (
+                            <TabsTrigger value="FOR_YOU" className="h-full px-6 rounded-sm font-semibold text-primary">For You ✨</TabsTrigger>
+                        )}
                         <TabsTrigger value="CONCERT" className="h-full px-6 rounded-sm">Concerts</TabsTrigger>
                         <TabsTrigger value="CONFERENCE" className="h-full px-6 rounded-sm">Conferences</TabsTrigger>
                         <TabsTrigger value="WORKSHOP" className="h-full px-6 rounded-sm">Workshops</TabsTrigger>
                         <TabsTrigger value="THEATER" className="h-full px-6 rounded-sm">Theater</TabsTrigger>
                     </TabsList>
 
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
+                    <Popover>
+                        <PopoverTrigger asChild>
                             <Button variant="outline" className="h-12 gap-2 border-dashed min-w-[140px]">
-                                <ListFilter className="h-4 w-4" />
+                                <CalendarIcon className="h-4 w-4" />
                                 {filterLabel || "Filter Date"}
                             </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-64 p-2">
-                            <DropdownMenuLabel>Filter by Date</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => setDateFilter('TODAY')}>
-                                Today
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setDateFilter('TOMORROW')}>
-                                Tomorrow
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setDateFilter('WEEKEND')}>
-                                This Weekend
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <div className="p-2 grid gap-2">
-                                <Label className="text-xs">Custom Range</Label>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <div className="grid gap-1">
-                                        <Label className="text-[10px] text-muted-foreground">From</Label>
-                                        <input
-                                            type="date"
-                                            className="w-full text-xs p-1 border rounded"
-                                            onChange={(e) => {
-                                                const date = e.target.valueAsDate;
-                                                setDateRange(prev => ({ ...prev, start: date }));
-                                                if (date && dateRange.end) {
-                                                    setFilterLabel(`${date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} - ${dateRange.end.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`)
-                                                } else if (date) {
-                                                    setFilterLabel(`From ${date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`)
-                                                }
-                                            }}
-                                        />
-                                    </div>
-                                    <div className="grid gap-1">
-                                        <Label className="text-[10px] text-muted-foreground">To</Label>
-                                        <input
-                                            type="date"
-                                            className="w-full text-xs p-1 border rounded"
-                                            onChange={(e) => {
-                                                const date = e.target.valueAsDate;
-                                                setDateRange(prev => ({ ...prev, end: date }));
-                                                if (dateRange.start && date) {
-                                                    setFilterLabel(`${dateRange.start.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} - ${date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`)
-                                                }
-                                            }}
-                                        />
-                                    </div>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="end" sideOffset={5}>
+                            <div className="flex flex-col sm:flex-row">
+                                {/* Preset Options */}
+                                <div className="border-r p-3 space-y-1">
+                                    <p className="text-xs font-medium text-muted-foreground mb-2 px-2">Quick Select</p>
+                                    <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => setDateFilter('TODAY')}>
+                                        Today
+                                    </Button>
+                                    <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => setDateFilter('TOMORROW')}>
+                                        Tomorrow
+                                    </Button>
+                                    <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => setDateFilter('WEEKEND')}>
+                                        This Weekend
+                                    </Button>
+                                    {filterLabel && (
+                                        <Button variant="ghost" size="sm" className="w-full justify-start text-destructive" onClick={() => { setDateRange({ start: null, end: null }); setFilterLabel(null); }}>
+                                            Clear
+                                        </Button>
+                                    )}
                                 </div>
-                                <Button size="sm" variant="secondary" onClick={() => { setDateRange({ start: null, end: null }); setFilterLabel(null); }}>
-                                    Clear Filter
-                                </Button>
+                                {/* Calendar */}
+                                <div className="p-2">
+                                    <Calendar
+                                        mode="range"
+                                        disabled={{ before: new Date() }}
+                                        selected={{
+                                            from: dateRange.start || undefined,
+                                            to: dateRange.end || undefined
+                                        }}
+                                        onSelect={(range) => {
+                                            if (range?.from) {
+                                                setDateRange({ start: range.from, end: range.to || null })
+                                                if (range.to) {
+                                                    setFilterLabel(`${range.from.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} - ${range.to.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`)
+                                                } else {
+                                                    setFilterLabel(`From ${range.from.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`)
+                                                }
+                                            } else {
+                                                setDateRange({ start: null, end: null })
+                                                setFilterLabel(null)
+                                            }
+                                        }}
+                                    />
+                                </div>
                             </div>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+                        </PopoverContent>
+                    </Popover>
                 </div>
 
                 <TabsContent value={selectedType} className="mt-0 space-y-8">

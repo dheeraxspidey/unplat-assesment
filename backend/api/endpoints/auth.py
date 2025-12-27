@@ -1,5 +1,6 @@
 from datetime import timedelta
 from typing import Any
+import json
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -36,6 +37,7 @@ def create_user(
         full_name=user_in.full_name,
         role=user_in.role,
         is_active=True,
+        interests=json.dumps(user_in.interests) if user_in.interests else "[]"
     )
     db.add(user)
     db.commit()

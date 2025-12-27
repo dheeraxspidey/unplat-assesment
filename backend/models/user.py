@@ -19,6 +19,9 @@ class User(Base):
     role = Column(Enum(UserRole), default=UserRole.ATTENDEE, nullable=False)
     
     is_active = Column(Boolean(), default=True)
+    
+    # Store explicit user interests as JSON string (e.g. '["Music", "Tech"]')
+    interests = Column(String(500), default="[]")
 
     events = relationship("Event", back_populates="organizer")
     bookings = relationship("Booking", back_populates="user")

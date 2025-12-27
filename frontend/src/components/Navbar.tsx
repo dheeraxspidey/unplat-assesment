@@ -21,7 +21,7 @@ export default function Navbar() {
     // Or we can save role in localStorage on login
 
     const handleLogout = () => {
-        localStorage.removeItem("token")
+        localStorage.clear()
         navigate("/login")
     }
 
