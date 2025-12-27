@@ -9,3 +9,4 @@ email-validator==2.1.0.post1
 passlib[bcrypt]==1.7.4
 bcrypt==4.1.2
 cryptography==41.0.7
+requests

@@ -6,13 +6,55 @@ from models.user import User
 
 class EventService:
     @staticmethod
-    def create_event(db: Session, event_in: EventCreate, organizer_id: int) -> Event:
+    def create_event(
+        db: Session, 
+        event_dict: dict, # Changed from Schema to dict to handle Form + File
+        organizer_id: int, 
+        image_file = None, 
+        image_url: str = None
+    ) -> Event:
+        import uuid
+        import shutil
+        import requests
+        import os
+        from pathlib import Path
+
+        image_id = None
+        MEDIA_DIR = Path("media")
+        MEDIA_DIR.mkdir(exist_ok=True)
+
+        if image_file:
+            file_extension = os.path.splitext(image_file.filename)[1]
+            image_id = f"{uuid.uuid4()}{file_extension}"
+            file_path = MEDIA_DIR / image_id
+            with open(file_path, "wb") as buffer:
+                shutil.copyfileobj(image_file.file, buffer)
+        
+        elif image_url:
+            try:
+                response = requests.get(image_url, stream=True)
+                if response.status_code == 200:
+                    # Guess extension from url or content-type
+                    content_type = response.headers.get('content-type')
+                    ext = ".jpg" # Default
+                    if content_type == "image/png": ext = ".png"
+                    elif content_type == "image/jpeg": ext = ".jpg"
+                    elif content_type == "image/webp": ext = ".webp"
+                    
+                    image_id = f"{uuid.uuid4()}{ext}"
+                    file_path = MEDIA_DIR / image_id
+                    with open(file_path, "wb") as buffer:
+                        for chunk in response.iter_content(chunk_size=8192):
+                            buffer.write(chunk)
+            except Exception as e:
+                print(f"Failed to download image: {e}")
+
         # Initially available seats = total seats
         event = Event(
-            **event_in.model_dump(),
-            available_seats=event_in.total_seats,
-            organizer_id=organizer_id,
-            status=EventStatus.DRAFT
+            **event_dict,
+            image_id=image_id,
+            available_seats=event_dict.get("total_seats", 0),
+            organizer_id=organizer_id
         )
         db.add(event)
         db.commit()

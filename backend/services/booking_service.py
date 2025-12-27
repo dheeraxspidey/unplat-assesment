@@ -19,19 +19,20 @@ class BookingService:
             if event.status != EventStatus.PUBLISHED:
                 raise HTTPException(status_code=400, detail="Event is not published")
             
-            if event.available_seats <= 0:
-                raise HTTPException(status_code=400, detail="Event is sold out")
+            if event.available_seats < booking_in.number_of_seats:
+                raise HTTPException(status_code=400, detail="Not enough seats available")
             
             # Use specific error message for duplicate bookings if needed, 
             # though requirements didn't strictly forbid multiple tickets per user.
             # Assuming 1 ticket per request.
             
-            event.available_seats -= 1
+            event.available_seats -= booking_in.number_of_seats
             
             booking = Booking(
                 user_id=user_id,
                 event_id=booking_in.event_id,
-                status=BookingStatus.CONFIRMED
+                status=BookingStatus.CONFIRMED,
+                number_of_seats=booking_in.number_of_seats
             )
             db.add(booking)
             db.commit()

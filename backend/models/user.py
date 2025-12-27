@@ -1,5 +1,6 @@
 import enum
 from sqlalchemy import Boolean, Column, Integer, String, Enum
+from sqlalchemy.orm import relationship
 from core.database import Base
 
 class UserRole(str, enum.Enum):
@@ -18,3 +19,6 @@ class User(Base):
     role = Column(Enum(UserRole), default=UserRole.ATTENDEE, nullable=False)
     
     is_active = Column(Boolean(), default=True)
+
+    events = relationship("Event", back_populates="organizer")
+    bookings = relationship("Booking", back_populates="user")

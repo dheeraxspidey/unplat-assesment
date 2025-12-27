@@ -16,7 +16,8 @@ class Booking(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     event_id = Column(Integer, ForeignKey("events.id"), nullable=False)
     status = Column(Enum(BookingStatus), default=BookingStatus.CONFIRMED, nullable=False)
+    number_of_seats = Column(Integer, default=1, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    user = relationship("User", backref="bookings")
-    event = relationship("Event", backref="bookings")
+    user = relationship("User", back_populates="bookings")
+    event = relationship("Event", back_populates="bookings")
