@@ -17,16 +17,27 @@ def read_events(
     location: Optional[str] = Query(None, description="Filter by location"),
     status: Optional[EventStatus] = Query(EventStatus.PUBLISHED, description="Filter by status (default: PUBLISHED)"),
     type: Optional[EventType] = Query(None, description="Filter by event type"),
+    search: Optional[str] = Query(None, description="Search by title or location"),
+    skip: int = 0,
+    limit: int = 100,
 ) -> Any:
     """
     Retrieve events.
     """
     query = db.query(Event).filter(Event.status == status)
+    
+    # Or conditions for search
+    from sqlalchemy import or_
+
+    if search:
+        search_filter = f"%{search}%"
+        query = query.filter(or_(Event.title.ilike(search_filter), Event.location.ilike(search_filter)))
+    
     if location:
         query = query.filter(Event.location.ilike(f"%{location}%"))
     if type:
         query = query.filter(Event.event_type == type)
-    return query.all()
+    return query.offset(skip).limit(limit).all()
 
 @router.post("/", response_model=EventResponse)
 def create_event(
@@ -63,11 +74,15 @@ def create_event(
 def read_my_events(
     db: Session = Depends(get_db),
     current_user: User = Depends(deps.get_current_organizer),
+    skip: int = 0,
+    limit: int = 100,
+    sort_by: str = "date",
+    sort_desc: bool = False,
 ) -> Any:
     """
     Get all events created by current organizer.
     """
-    return EventService.get_organizer_events(db, current_user.id)
+    return EventService.get_organizer_events(db, current_user.id, skip=skip, limit=limit, sort_by=sort_by, sort_desc=sort_desc)
 
 @router.put("/{id}", response_model=EventResponse)
 def update_event(
@@ -93,3 +108,13 @@ def cancel_event(
     Cancel an event (Organizer only).
     """
     return EventService.cancel_event(db, id, current_user.id)
+
+@router.get("/stats/overview", response_model=dict)
+def get_organizer_stats(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(deps.get_current_organizer),
+) -> Any:
+    """
+    Get aggregated statistics for the organizer.
+    """
+    return EventService.get_organizer_stats(db, current_user.id)

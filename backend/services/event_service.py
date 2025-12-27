@@ -23,7 +23,7 @@ class EventService:
         MEDIA_DIR = Path("media")
         MEDIA_DIR.mkdir(exist_ok=True)
 
-        if image_file:
+        if image_file and image_file.filename:
             file_extension = os.path.splitext(image_file.filename)[1]
             image_id = f"{uuid.uuid4()}{file_extension}"
             file_path = MEDIA_DIR / image_id
@@ -62,8 +62,26 @@ class EventService:
         return event
 
     @staticmethod
-    def get_organizer_events(db: Session, organizer_id: int):
-        return db.query(Event).filter(Event.organizer_id == organizer_id).all()
+    def get_organizer_events(db: Session, organizer_id: int, skip: int = 0, limit: int = 100, sort_by: str = "date", sort_desc: bool = False):
+        query = db.query(Event).filter(Event.organizer_id == organizer_id)
+        
+        if sort_by == "price":
+            sort_attr = Event.price
+        elif sort_by == "sold":
+            # Sort by calculated sold seats (total - available)
+            sort_attr = Event.total_seats - Event.available_seats
+        elif sort_by == "status":
+            sort_attr = Event.status
+        else:
+            # Default to date
+            sort_attr = Event.date
+            
+        if sort_desc:
+            query = query.order_by(sort_attr.desc())
+        else:
+            query = query.order_by(sort_attr.asc())
+            
+        return query.offset(skip).limit(limit).all()
 
     @staticmethod
     def update_event(db: Session, event_id: int, event_in: EventUpdate, organizer_id: int) -> Event:
@@ -87,6 +105,7 @@ class EventService:
         db.refresh(event)
         return event
     
+
     @staticmethod
     def cancel_event(db: Session, event_id: int, organizer_id: int) -> Event:
          event = db.query(Event).filter(Event.id == event_id, Event.organizer_id == organizer_id).first()
@@ -104,3 +123,21 @@ class EventService:
          db.commit()
          db.refresh(event)
          return event
+
+    @staticmethod
+    def get_organizer_stats(db: Session, organizer_id: int) -> dict:
+        events = db.query(Event).filter(Event.organizer_id == organizer_id).all()
+        
+        total_events = len(events)
+        total_tickets_sold = sum(e.total_seats - e.available_seats for e in events)
+        total_revenue = sum((e.total_seats - e.available_seats) * e.price for e in events)
+        
+        # Count active events (Published)
+        active_events = sum(1 for e in events if e.status == EventStatus.PUBLISHED)
+
+        return {
+            "total_events": total_events,
+            "tickets_sold": total_tickets_sold,
+            "total_revenue": total_revenue,
+            "active_events": active_events
+        }

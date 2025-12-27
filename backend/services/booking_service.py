@@ -47,5 +47,24 @@ class BookingService:
             raise HTTPException(status_code=500, detail=str(e))
 
     @staticmethod
-    def get_user_bookings(db: Session, user_id: int):
-        return db.query(Booking).filter(Booking.user_id == user_id).all()
+    def get_user_bookings(db: Session, user_id: int, skip: int = 0, limit: int = 100):
+        return db.query(Booking).filter(Booking.user_id == user_id).offset(skip).limit(limit).all()
+
+    @staticmethod
+    def get_user_stats(db: Session, user_id: int) -> dict:
+        from datetime import datetime
+        bookings = db.query(Booking).filter(Booking.user_id == user_id).all()
+        
+        total_bookings = len(bookings)
+        
+        # Count upcoming confirmed events
+        now = datetime.now()
+        upcoming_count = 0
+        for b in bookings:
+            if b.status == BookingStatus.CONFIRMED and b.event.date > now:
+                upcoming_count += 1
+                
+        return {
+            "total_bookings": total_bookings,
+            "upcoming_events": upcoming_count
+        }

@@ -25,8 +25,20 @@ def create_booking(
 def read_my_bookings(
     db: Session = Depends(get_db),
     current_user: User = Depends(deps.get_current_active_user),
+    skip: int = 0,
+    limit: int = 100,
 ) -> Any:
     """
     Get all bookings for current user.
     """
-    return BookingService.get_user_bookings(db, current_user.id)
+    return BookingService.get_user_bookings(db, current_user.id, skip=skip, limit=limit)
+
+@router.get("/my-stats", response_model=dict)
+def read_my_stats(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(deps.get_current_active_user),
+) -> Any:
+    """
+    Get aggregated stats for current user.
+    """
+    return BookingService.get_user_stats(db, current_user.id)
