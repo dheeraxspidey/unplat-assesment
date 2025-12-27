@@ -5,14 +5,13 @@ import { Button } from "@/components/ui/button"
 import {
     Card,
     CardContent,
-    CardDescription,
     CardFooter,
     CardHeader,
     CardTitle,
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { Calendar, MapPin, Users, Ticket, Check } from "lucide-react"
+import { Calendar, MapPin, Users } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 
 interface Event {
@@ -88,80 +87,93 @@ export default function EventDetail() {
     if (!event) return <div className="p-8 text-center">Event not found.</div>
 
     return (
-        <div className="grid gap-6 md:grid-cols-2">
-            <div className="overflow-hidden rounded-xl border bg-muted">
-                <img
-                    src={getImageUrl(event.image_id)}
-                    alt={event.title}
-                    className="h-full w-full object-cover"
-                />
+        <div className="space-y-6">
+            <div>
+                <Button variant="ghost" onClick={() => navigate("/")} className="pl-0 hover:bg-transparent hover:underline flex items-center">
+                    ← Back to Events
+                </Button>
             </div>
-
-            <div className="space-y-6">
-                <div>
-                    <Badge className="mb-2">{event.event_type}</Badge>
-                    <h1 className="text-3xl font-extrabold tracking-tight lg:text-4xl">{event.title}</h1>
-                    <div className="mt-2 flex items-center text-muted-foreground">
-                        <MapPin className="mr-1 h-4 w-4" />
-                        <span>{event.location}</span>
-                    </div>
+            <div className="grid gap-6 md:grid-cols-2">
+                <div className="overflow-hidden rounded-xl border bg-muted">
+                    <img
+                        src={getImageUrl(event.image_id)}
+                        alt={event.title}
+                        className="h-full w-full object-cover"
+                    />
                 </div>
 
-                <Separator />
-
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="flex items-center space-x-2 rounded-lg border p-3">
-                        <Calendar className="h-5 w-5 text-primary" />
-                        <div>
-                            <p className="text-xs text-muted-foreground">Date</p>
-                            <p className="font-medium">{new Date(event.date).toLocaleDateString()}</p>
+                <div className="space-y-6">
+                    <div>
+                        <Badge className="mb-2">{event.event_type}</Badge>
+                        <h1 className="text-3xl font-extrabold tracking-tight lg:text-4xl">{event.title}</h1>
+                        <div className="mt-2 flex items-center text-muted-foreground">
+                            <MapPin className="mr-1 h-4 w-4" />
+                            <span>{event.location}</span>
                         </div>
                     </div>
-                    <div className="flex items-center space-x-2 rounded-lg border p-3">
-                        <Users className="h-5 w-5 text-primary" />
-                        <div>
-                            <p className="text-xs text-muted-foreground">Availability</p>
-                            <p className="font-medium">{event.available_seats} / {event.total_seats}</p>
+
+                    <Separator />
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="flex items-center space-x-2 rounded-lg border p-3">
+                            <Calendar className="h-5 w-5 text-primary" />
+                            <div>
+                                <p className="text-xs text-muted-foreground">Date</p>
+                                <p className="font-medium">{new Date(event.date).toLocaleDateString()}</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center space-x-2 rounded-lg border p-3">
+                            <Users className="h-5 w-5 text-primary" />
+                            <div>
+                                <p className="text-xs text-muted-foreground">Availability</p>
+                                <p className="font-medium">{event.available_seats} / {event.total_seats}</p>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Booking Summary</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="flex items-center justify-between">
-                            <label className="text-sm font-medium">Number of Seats</label>
-                            <input
-                                type="number"
-                                min="1"
-                                max={event.available_seats}
-                                value={seats}
-                                onChange={(e) => setSeats(Math.min(Number(e.target.value), event.available_seats))}
-                                className="w-20 rounded-md border p-1 text-center"
-                            />
-                        </div>
-                        <div className="flex justify-between">
-                            <span>Standard Ticket x {seats}</span>
-                            <span>${(event.price * seats).toFixed(2)}</span>
-                        </div>
-                        <Separator />
-                        <div className="flex justify-between font-bold">
-                            <span>Total</span>
-                            <span>${(event.price * seats).toFixed(2)}</span>
-                        </div>
-                    </CardContent>
-                    <CardFooter>
-                        <Button className="w-full" size="lg" onClick={handleBook} disabled={bookingLoading || event.available_seats <= 0}>
-                            {bookingLoading ? "Processing..." : (event.available_seats > 0 ? "Book Tickets" : "Sold Out")}
-                        </Button>
-                    </CardFooter>
-                </Card>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Booking Summary</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <label className="text-sm font-medium">Number of Seats</label>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    max={event.available_seats}
+                                    value={seats}
+                                    onChange={(e) => setSeats(Math.min(Number(e.target.value), event.available_seats))}
+                                    className="w-20 rounded-md border p-1 text-center"
+                                />
+                            </div>
+                            <div className="flex justify-between">
+                                <span>Standard Ticket x {seats}</span>
+                                <span>${(event.price * seats).toFixed(2)}</span>
+                            </div>
+                            <Separator />
+                            <div className="flex justify-between font-bold">
+                                <span>Total</span>
+                                <span>${(event.price * seats).toFixed(2)}</span>
+                            </div>
+                        </CardContent>
+                        <CardFooter>
+                            {localStorage.getItem("role") === "ORGANIZER" ? (
+                                <Button className="w-full" size="lg" disabled>
+                                    Organizers cannot book tickets
+                                </Button>
+                            ) : (
+                                <Button className="w-full" size="lg" onClick={handleBook} disabled={bookingLoading || event.available_seats <= 0}>
+                                    {bookingLoading ? "Processing..." : (event.available_seats > 0 ? "Book Tickets" : "Sold Out")}
+                                </Button>
+                            )}
+                        </CardFooter>
+                    </Card>
 
-                <div className="rounded-lg bg-muted p-4">
-                    <h3 className="mb-2 font-semibold">About Event</h3>
-                    <p className="text-sm text-muted-foreground">{event.description || "No description provided."}</p>
+                    <div className="rounded-lg bg-muted p-4">
+                        <h3 className="mb-2 font-semibold">About Event</h3>
+                        <p className="text-sm text-muted-foreground">{event.description || "No description provided."}</p>
+                    </div>
                 </div>
             </div>
         </div>

@@ -44,6 +44,7 @@ interface Event {
     status: string
     event_type: string
     image_id: string
+    description: string
 }
 
 export default function OrganizerDashboard() {
@@ -52,6 +53,10 @@ export default function OrganizerDashboard() {
     const { toast } = useToast()
     const [open, setOpen] = useState(false)
     const [publishStatus, setPublishStatus] = useState("DRAFT")
+
+    const [editingEvent, setEditingEvent] = useState<Event | null>(null)
+    const [isEditOpen, setIsEditOpen] = useState(false)
+    const [eventToCancel, setEventToCancel] = useState<Event | null>(null)
 
     useEffect(() => {
         fetchMyEvents()
@@ -75,8 +80,6 @@ export default function OrganizerDashboard() {
         setIsLoading(true)
         const token = localStorage.getItem("token")
         const formData = new FormData(e.currentTarget)
-
-        // Append status explicitly based on button click
         formData.append("status", publishStatus)
 
         try {
@@ -99,15 +102,90 @@ export default function OrganizerDashboard() {
         }
     }
 
+    const handleUpdateEvent = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault()
+        if (!editingEvent) return
+        setIsLoading(true)
+        const token = localStorage.getItem("token")
+
+        // Construct JSON payload for update, matching EventUpdate schema
+        const formData = new FormData(e.currentTarget)
+        const data = {
+            title: formData.get("title"),
+            event_type: formData.get("event_type"),
+            date: formData.get("date"),
+            location: formData.get("location"),
+            total_seats: Number(formData.get("total_seats")),
+            price: Number(formData.get("price")),
+            description: formData.get("description"),
+            // image_url handling omitted for simplicity in update, or add if needed
+        }
+
+        try {
+            await axios.put(`http://localhost:8000/api/events/${editingEvent.id}`, data, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                }
+            })
+            toast({ title: "Event Updated", description: "Your changes have been saved." })
+            setIsEditOpen(false)
+            setEditingEvent(null)
+            fetchMyEvents()
+        } catch (error: any) {
+            toast({
+                title: "Update Failed",
+                description: error.response?.data?.detail || "Could not update event",
+                variant: "destructive"
+            })
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
+    const openCancelDialog = (event: Event) => {
+        setEventToCancel(event)
+    }
+
+    const onConfirmCancelEvent = async () => {
+        if (!eventToCancel) return
+
+        const token = localStorage.getItem("token")
+        try {
+            await axios.delete(`http://localhost:8000/api/events/${eventToCancel.id}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            })
+            toast({ title: "Event Cancelled", description: "The event has been cancelled." })
+            fetchMyEvents()
+            setEventToCancel(null)
+        } catch (error) {
+            toast({ title: "Failed to cancel event", variant: "destructive" })
+        }
+    }
+
+    const openEditDialog = (event: Event) => {
+        setEditingEvent(event)
+        setIsEditOpen(true)
+    }
+
     const totalRevenue = events.reduce((acc, event) => acc + ((event.total_seats - event.available_seats) * event.price), 0)
     const ticketsSold = events.reduce((acc, event) => acc + (event.total_seats - event.available_seats), 0)
+
+    // Helper to format date for input datetime-local
+    const formatDateForInput = (dateString: string) => {
+        const date = new Date(dateString)
+        // Adjust for timezone offset to show correct local time in input
+        const offset = date.getTimezoneOffset()
+        const adjustedDate = new Date(date.getTime() - (offset * 60 * 1000))
+        return adjustedDate.toISOString().slice(0, 16)
+    }
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                 <div>
                     <h2 className="text-4xl font-extrabold tracking-tight lg:text-5xl">Organizer Studio</h2>
-                    <p className="text-muted-foreground mt-2 text-lg">Manage your events and track performance.</p>
+                    <p className="text-muted-foreground mt-2 text-lg">Manage your events.</p>
                 </div>
 
                 <Dialog open={open} onOpenChange={setOpen}>
@@ -195,6 +273,118 @@ export default function OrganizerDashboard() {
                         </ScrollArea>
                     </DialogContent>
                 </Dialog>
+
+                {/* Edit Dialog */}
+                <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+                    <DialogContent className="sm:max-w-[600px] h-[85vh]">
+                        <DialogHeader>
+                            <DialogTitle>Edit Event</DialogTitle>
+                            <DialogDescription>
+                                Update event details, date, or capacity.
+                            </DialogDescription>
+                        </DialogHeader>
+                        {editingEvent && (
+                            <ScrollArea className="h-full pr-4">
+                                <form onSubmit={handleUpdateEvent} className="space-y-6 px-1">
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="edit-title" className="text-base">Event Title</Label>
+                                        <Input id="edit-title" name="title" required defaultValue={editingEvent.title} className="h-12" />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="edit-type">Type</Label>
+                                            <Select name="event_type" defaultValue={editingEvent.event_type}>
+                                                <SelectTrigger className="h-12">
+                                                    <SelectValue placeholder="Select type" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="CONCERT">Concert</SelectItem>
+                                                    <SelectItem value="CONFERENCE">Conference</SelectItem>
+                                                    <SelectItem value="WORKSHOP">Workshop</SelectItem>
+                                                    <SelectItem value="THEATER">Theater</SelectItem>
+                                                    <SelectItem value="OTHER">Other</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="edit-date">Date & Time</Label>
+                                            <Input
+                                                id="edit-date"
+                                                name="date"
+                                                type="datetime-local"
+                                                required
+                                                defaultValue={formatDateForInput(editingEvent.date)}
+                                                className="h-12"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="edit-location">Location</Label>
+                                        <Input id="edit-location" name="location" required defaultValue={editingEvent.location} className="h-12" />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="edit-total_seats">Capacity</Label>
+                                            <Input
+                                                id="edit-total_seats"
+                                                name="total_seats"
+                                                type="number"
+                                                required
+                                                min={editingEvent.total_seats - editingEvent.available_seats}
+                                                defaultValue={editingEvent.total_seats}
+                                                className="h-12"
+                                            />
+                                            <p className="text-xs text-muted-foreground">
+                                                Minimum: {editingEvent.total_seats - editingEvent.available_seats} (Already booked)
+                                            </p>
+                                        </div>
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="edit-price">Price ($)</Label>
+                                            <Input id="edit-price" name="price" type="number" required min="0" step="0.01" defaultValue={editingEvent.price} className="h-12" />
+                                        </div>
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="edit-description">Description</Label>
+                                        <Textarea id="edit-description" name="description" defaultValue={editingEvent.description} className="min-h-[100px]" />
+                                    </div>
+                                    <DialogFooter className="pt-4">
+                                        <Button type="submit" className="w-full" disabled={isLoading}>
+                                            Save Changes
+                                        </Button>
+                                    </DialogFooter>
+                                </form>
+                            </ScrollArea>
+                        )}
+                    </DialogContent>
+                </Dialog>
+
+                {/* Cancel Confirmation Dialog */}
+                <Dialog open={!!eventToCancel} onOpenChange={(open) => !open && setEventToCancel(null)}>
+                    <DialogContent className="sm:max-w-[425px]">
+                        <DialogHeader>
+                            <DialogTitle className="text-destructive flex items-center gap-2">
+                                <Trash2 className="h-5 w-5" /> Cancel Event?
+                            </DialogTitle>
+                            <DialogDescription className="pt-2">
+                                Are you sure you want to cancel <strong>{eventToCancel?.title}</strong>?
+                                <br /><br />
+                                This action cannot be undone. All bookings will be refunded and attendees will be notified.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <DialogFooter className="gap-2 sm:justify-end">
+                            <Button variant="outline" onClick={() => setEventToCancel(null)}>
+                                Keep Event
+                            </Button>
+                            <Button
+                                variant="destructive"
+                                onClick={onConfirmCancelEvent}
+                            >
+                                Yes, Cancel Event
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
             </div>
 
             {/* Stats Cards */}
@@ -206,7 +396,7 @@ export default function OrganizerDashboard() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-4xl font-bold tracking-tight">${totalRevenue.toLocaleString()}</div>
-                        <p className="text-xs text-muted-foreground mt-1">+20.1% from last month</p>
+                        <p className="text-xs text-muted-foreground mt-1">Gross earnings</p>
                     </CardContent>
                 </Card>
                 <Card>
@@ -246,11 +436,23 @@ export default function OrganizerDashboard() {
                                 variant="organizer"
                                 action={
                                     <div className="grid grid-cols-2 gap-2 w-full">
-                                        <Button variant="outline" size="sm" className="w-full">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="w-full"
+                                            onClick={() => openEditDialog(event)}
+                                        >
                                             <Edit className="w-4 h-4 mr-2" /> Edit
                                         </Button>
-                                        <Button variant="destructive" size="sm" className="w-full">
-                                            <Trash2 className="w-4 h-4 mr-2" /> Delete
+                                        <Button
+                                            variant="destructive"
+                                            size="sm"
+                                            className="w-full"
+                                            onClick={() => openCancelDialog(event)}
+                                            disabled={event.status === "CANCELLED"}
+                                        >
+                                            <Trash2 className="w-4 h-4 mr-2" />
+                                            {event.status === "CANCELLED" ? "Cancelled" : "Cancel"}
                                         </Button>
                                     </div>
                                 }

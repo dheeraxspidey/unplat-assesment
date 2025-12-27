@@ -10,13 +10,14 @@ import {
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { Ticket, Star, Trophy } from "lucide-react"
+import { Ticket } from "lucide-react"
 import { EventCard } from "@/components/EventCard"
 
 interface Booking {
     id: number
     event_id: number
     status: string
+    number_of_seats: number
     event: {
         id: number
         title: string
@@ -59,7 +60,7 @@ export default function Dashboard() {
             <div className="flex items-center justify-between">
                 <div>
                     <h2 className="text-3xl font-bold tracking-tight">Welcome back</h2>
-                    <p className="text-muted-foreground">Manage your tickets and rewards.</p>
+                    <p className="text-muted-foreground">Manage your bookings.</p>
                 </div>
                 <Button asChild size="lg" className="rounded-full">
                     <Link to="/">Find New Events</Link>
@@ -74,27 +75,7 @@ export default function Dashboard() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-3xl font-bold">{bookings.length}</div>
-                        <p className="text-xs opacity-70 mt-1">Lifetime tickets purchased</p>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Points Earned</CardTitle>
-                        <Trophy className="h-4 w-4 text-yellow-500" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-3xl font-bold">1,250</div>
-                        <p className="text-xs text-muted-foreground mt-1 text-green-600 font-medium">+250 from last event</p>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Status</CardTitle>
-                        <Star className="h-4 w-4 text-purple-500" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-3xl font-bold">Gold</div>
-                        <p className="text-xs text-muted-foreground mt-1">Top 5% of attendees</p>
+                        <p className="text-xs opacity-70 mt-1">Events scheduled</p>
                     </CardContent>
                 </Card>
             </div>
@@ -103,7 +84,7 @@ export default function Dashboard() {
 
             <section>
                 <h3 className="text-2xl font-semibold mb-6 flex items-center">
-                    <Ticket className="mr-2 h-6 w-6 text-primary" /> Your Tickets
+                    <Ticket className="mr-2 h-6 w-6 text-primary" /> Your Bookings
                 </h3>
 
                 {bookings.length === 0 ? (
@@ -111,7 +92,7 @@ export default function Dashboard() {
                         <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-muted shadow-sm">
                             <Ticket className="h-8 w-8 text-muted-foreground" />
                         </div>
-                        <h3 className="mt-6 text-xl font-semibold">No tickets yet</h3>
+                        <h3 className="mt-6 text-xl font-semibold">No bookings yet</h3>
                         <p className="mb-6 max-w-sm text-muted-foreground">
                             You haven't booked any events. Explore our curated list of upcoming events to get started.
                         </p>
@@ -127,12 +108,20 @@ export default function Dashboard() {
                                 event={booking.event}
                                 variant="booking"
                                 action={
-                                    <div className="space-y-2 w-full">
-                                        <Button className="w-full" variant="outline">
-                                            View Ticket #{booking.id}
-                                        </Button>
+                                    <div className="space-y-3 w-full">
+                                        <div className="grid grid-cols-2 gap-2 text-sm">
+                                            <div className="bg-muted p-2 rounded text-center">
+                                                <span className="block text-xs text-muted-foreground">Seats</span>
+                                                <span className="font-bold">{booking.number_of_seats}</span>
+                                            </div>
+                                            <div className="bg-muted p-2 rounded text-center">
+                                                <span className="block text-xs text-muted-foreground">Paid</span>
+                                                <span className="font-bold text-primary">${(booking.event.price * booking.number_of_seats).toFixed(2)}</span>
+                                            </div>
+                                        </div>
+
                                         <div className="flex justify-center">
-                                            <Badge variant={booking.status === "CONFIRMED" ? "default" : "destructive"} className="uppercase text-[10px] tracking-wider">
+                                            <Badge variant={booking.status === "CONFIRMED" ? "default" : "destructive"} className="uppercase text-[10px] tracking-wider w-full justify-center py-1">
                                                 {booking.status}
                                             </Badge>
                                         </div>

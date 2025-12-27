@@ -9,7 +9,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { CalendarDays, LayoutDashboard, LogOut, Ticket } from "lucide-react"
+import { CalendarDays, LayoutDashboard, LogOut, Ticket, Menu } from "lucide-react"
 
 export default function Navbar() {
     const navigate = useNavigate()
@@ -25,7 +25,25 @@ export default function Navbar() {
         navigate("/login")
     }
 
+    const parseJwt = (token: string) => {
+        try {
+            return JSON.parse(atob(token.split('.')[1]))
+        } catch (e) {
+            return null
+        }
+    }
+
+    const getUserEmail = () => {
+        if (!token) return "user@example.com"
+        const decoded = parseJwt(token)
+        return decoded?.sub || "user@example.com"
+    }
+
+    // For full name we might need to store it or fetch it, 
+    // but typically sub is email. Let's use email for now.
+
     const role = localStorage.getItem("role")
+    const userEmail = getUserEmail()
 
     const isActive = (path: string) => location.pathname === path
 
@@ -54,7 +72,7 @@ export default function Navbar() {
                                 to="/dashboard"
                                 className={`transition-colors hover:text-foreground/80 ${isActive('/dashboard') ? 'text-primary font-bold' : 'text-foreground/60'}`}
                             >
-                                My Tickets
+                                My Bookings
                             </Link>
                         )}
 
@@ -69,35 +87,66 @@ export default function Navbar() {
                     </nav>
                 </div>
 
-                <div className="flex flex-1 items-center justify-between space-x-2 md:justify-end">
-                    <div className="w-full flex-1 md:w-auto md:flex-none">
-                    </div>
+                <div className="md:hidden flex items-center mr-4">
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                                <Menu className="h-6 w-6" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="w-[200px] bg-background">
+                            <DropdownMenuItem onClick={() => navigate("/")}>
+                                Explore
+                            </DropdownMenuItem>
+                            {token && role === "ATTENDEE" && (
+                                <DropdownMenuItem onClick={() => navigate("/dashboard")}>
+                                    My Bookings
+                                </DropdownMenuItem>
+                            )}
+                            {token && role === "ORGANIZER" && (
+                                <DropdownMenuItem onClick={() => navigate("/organizer")}>
+                                    Organizer Studio
+                                </DropdownMenuItem>
+                            )}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                    <Link to="/" className="ml-2 flex items-center space-x-2">
+                        <div className="bg-primary text-primary-foreground rounded-lg p-1">
+                            <Ticket className="h-5 w-5" />
+                        </div>
+                        <span className="font-bold inline-block text-lg tracking-tight">
+                            Event<span className="text-primary">Flow</span>
+                        </span>
+                    </Link>
+                </div>
+
+                <div className="flex flex-1 items-center justify-end space-x-2">
                     {token ? (
                         <div className="flex items-center gap-4">
-
-
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                     <Button variant="ghost" className="relative h-9 w-9 rounded-full ring-2 ring-primary/10">
                                         <Avatar className="h-9 w-9">
-                                            <AvatarImage src="/avatars/01.png" alt="@user" />
-                                            <AvatarFallback className="bg-primary/5 text-primary">JD</AvatarFallback>
+                                            <AvatarImage src={`https://robohash.org/${userEmail}.png?set=set4&size=128x128`} alt="@user" />
+                                            <AvatarFallback className="bg-primary/5 text-primary">
+                                                {userEmail.substring(0, 2).toUpperCase()}
+                                            </AvatarFallback>
                                         </Avatar>
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent className="w-56" align="end" forceMount>
                                     <DropdownMenuLabel className="font-normal">
                                         <div className="flex flex-col space-y-1">
-                                            <p className="text-sm font-medium leading-none">User Account</p>
+                                            <p className="text-sm font-medium leading-none">Account</p>
                                             <p className="text-xs leading-none text-muted-foreground">
-                                                user@example.com
+                                                {userEmail}
                                             </p>
                                         </div>
                                     </DropdownMenuLabel>
                                     <DropdownMenuSeparator />
                                     {role === "ATTENDEE" && (
                                         <DropdownMenuItem onClick={() => navigate("/dashboard")}>
-                                            <LayoutDashboard className="mr-2 h-4 w-4" /> My Tickets
+                                            <LayoutDashboard className="mr-2 h-4 w-4" /> My Bookings
                                         </DropdownMenuItem>
                                     )}
                                     {role === "ORGANIZER" && (

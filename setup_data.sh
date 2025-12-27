@@ -3,8 +3,12 @@
 BASE_URL="http://localhost:8000/api"
 ORGANIZER_EMAIL="organizer@gmail.com"
 ORGANIZER_PASSWORD="password123"
+ORGANIZER2_EMAIL="organizer2@gmail.com"
+ORGANIZER2_PASSWORD="password123"
 ATTENDEE_EMAIL="attendee@gmail.com"
 ATTENDEE_PASSWORD="password123"
+ATTENDEE2_EMAIL="attendee2@gmail.com"
+ATTENDEE2_PASSWORD="password123"
 
 # --- 0. RESET DATABASE ---
 echo "Resetting Database..."
@@ -46,7 +50,9 @@ login() {
 
 # --- 1. SETUP ORGANIZER ---
 ORG_TOKEN=$(login "$ORGANIZER_EMAIL" "$ORGANIZER_PASSWORD" "ORGANIZER")
+ORG2_TOKEN=$(login "$ORGANIZER2_EMAIL" "$ORGANIZER2_PASSWORD" "ORGANIZER")
 echo "Organizer Token: ${ORG_TOKEN:0:10}..."
+echo "Organizer 2 Token: ${ORG2_TOKEN:0:10}..."
 
 # --- 2. CREATE EVENTS ---
 echo -e "\nCreating Events..."
@@ -81,15 +87,44 @@ create_event_url() {
 create_event_url "Neon Dreams Concert" "2025-06-15T20:00:00" "Cyber Arena" 120.00 500 "CONCERT" "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=500" "Synthwave night."
 create_event_url "Future Tech Conf" "2025-07-10T09:00:00" "Innovation Center" 500.00 1000 "CONFERENCE" "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=500" "AI and Blockchain."
 create_event_url "Digital Art Workshop" "2025-05-20T14:00:00" "Creative Hub" 80.00 30 "WORKSHOP" "https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=500" "Learn digital painting."
-create_event_url "Symphony Under Stars" "2025-08-05T19:30:00" "City Park" 150.00 2000 "CONCERT" "https://images.unsplash.com/photo-1465847899078-b413929f7120?w=500" "Classical music outdoors."
-create_event_url "Shakespeare in Park" "2025-09-12T18:00:00" "Globe Outdoor" 45.00 300 "THEATER" "https://images.unsplash.com/photo-1507676184212-d03816b98fce?w=500" "Hamlet performance."
+create_event_url "Symphony Under Stars" "2025-08-05T19:30:00" "City Park" 150.00 2000 "CONCERT" "https://images.unsplash.com/photo-1551696785-927d4ac2d35b?w=500" "Classical music outdoors."
+create_event_url "Shakespeare in Park" "2025-09-12T18:00:00" "Globe Outdoor" 45.00 300 "THEATER" "https://plus.unsplash.com/premium_photo-1664302637848-6ae0d5821944?w=500" "Hamlet performance."
 
 # Reuse images for more events
 create_event_url "React Summit" "2025-10-01T09:00:00" "Convention Hall" 300.00 800 "CONFERENCE" "https://images.unsplash.com/photo-1591115765373-5207764f72e7?w=500" "Frontend development."
-create_event_url "Pottery Masterclass" "2025-04-15T10:00:00" "Art Studio" 60.00 15 "WORKSHOP" "https://images.unsplash.com/photo-1565193566173-092928ae6e89?w=500" "Hands-on clay work."
-create_event_url "Indie Film Premiere" "2025-11-20T20:00:00" "Vintage Cinema" 25.00 100 "THEATER" "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=500" "Local filmmaker showcase."
-create_event_url "Jazz & Blues Night" "2025-06-30T21:00:00" "Blue Note Club" 90.00 150 "CONCERT" "https://images.unsplash.com/photo-1511192336575-5a79af67a629?w=500" "Smooth jazz evening."
+create_event_url "Pottery Masterclass" "2025-04-15T10:00:00" "Art Studio" 60.00 15 "WORKSHOP" "https://images.unsplash.com/photo-1493106641515-6b5631de4bb9?w=500" "Hands-on clay work."
+create_event_url "Indie Film Premiere" "2025-11-20T20:00:00" "Vintage Cinema" 25.00 100 "THEATER" "https://images.unsplash.com/photo-1542204165-65bf26472b9b?w=500" "Local filmmaker showcase."
+create_event_url "Jazz & Blues Night" "2025-06-30T21:00:00" "Blue Note Club" 90.00 150 "CONCERT" "https://images.unsplash.com/photo-1415201364774-f6f0bb35f28f?w=500" "Smooth jazz evening."
 create_event_url "Startup Pitch" "2025-05-05T18:00:00" "WeWork Space" 10.00 50 "OTHER" "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=500" "Pitch your idea."
+
+create_event_url_org2() {
+  local title=$1
+  local date=$2
+  local location=$3
+  local price=$4
+  local seats=$5
+  local type=$6
+  local image_url=$7
+  local desc=$8
+
+  curl -X POST "$BASE_URL/events/" \
+    -H "Authorization: Bearer $ORG2_TOKEN" \
+    -F "title=$title" \
+    -F "date=$date" \
+    -F "location=$location" \
+    -F "price=$price" \
+    -F "total_seats=$seats" \
+    -F "event_type=$type" \
+    -F "status=PUBLISHED" \
+    -F "image_url=$image_url" \
+    -F "description=$desc" \
+    > /dev/null 2>&1
+    
+  echo "Created (Org 2): $title"
+}
+
+create_event_url_org2 "Modern Dance Show" "2025-07-20T19:00:00" "City Arts Theater" 55.00 200 "THEATER" "https://images.unsplash.com/photo-1508700929628-666bc8bd84ea?w=500" "Contemporary dance performance."
+create_event_url_org2 "Blockchain Summit" "2025-09-05T09:00:00" "Grand Hotel" 400.00 500 "CONFERENCE" "https://images.unsplash.com/photo-1605792657660-596af9009e82?w=500" "Everything about crypto."
 
 # --- 3. SETUP ATTENDEE & BOOK ---
 echo -e "\n3. Attendee Booking..."
@@ -102,6 +137,19 @@ for id in $EVENTS; do
   echo "Booking Event ID: $id"
   curl -s -X POST "$BASE_URL/bookings/" \
     -H "Authorization: Bearer $ATT_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d '{"event_id": '"$id"'}' > /dev/null
+done
+
+echo -e "\n3b. Attendee 2 Booking..."
+ATT2_TOKEN=$(login "$ATTENDEE2_EMAIL" "$ATTENDEE2_PASSWORD" "ATTENDEE")
+# Get IDs of next 2 events (offset 3)
+EVENTS2=$(curl -s "$BASE_URL/events/" -H "Authorization: Bearer $ATT2_TOKEN" | grep -o '"id":[0-9]*' | head -5 | tail -2 | cut -d':' -f2)
+
+for id in $EVENTS2; do
+  echo "Attendee 2 Booking Event ID: $id"
+  curl -s -X POST "$BASE_URL/bookings/" \
+    -H "Authorization: Bearer $ATT2_TOKEN" \
     -H "Content-Type: application/json" \
     -d '{"event_id": '"$id"'}' > /dev/null
 done
