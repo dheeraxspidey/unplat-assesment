@@ -42,3 +42,14 @@ def read_my_stats(
     Get aggregated stats for current user.
     """
     return BookingService.get_user_stats(db, current_user.id)
+
+@router.post("/{booking_id}/cancel", response_model=BookingResponse)
+def cancel_booking(
+    booking_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(deps.get_current_active_user),
+) -> Any:
+    """
+    Cancel a booking (User).
+    """
+    return BookingService.cancel_booking_by_user(db, booking_id, current_user.id)

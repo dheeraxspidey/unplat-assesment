@@ -41,7 +41,7 @@ export default function Login() {
             const role = decoded?.role || "ATTENDEE"
             localStorage.setItem("role", role)
 
-            toast({ title: "Welcome back!", description: "Logged in successfully." })
+            toast({ title: "Welcome back!", description: "Logged in successfully.", duration: 2000 })
 
             if (role === "ORGANIZER") {
                 navigate("/organizer")

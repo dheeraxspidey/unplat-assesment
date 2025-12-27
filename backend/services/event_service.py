@@ -62,7 +62,20 @@ class EventService:
         return event
 
     @staticmethod
+    def update_ended_events(db: Session):
+        from datetime import datetime
+        now = datetime.utcnow()
+        db.query(Event).filter(
+            Event.status == EventStatus.PUBLISHED,
+            Event.date < now
+        ).update({Event.status: EventStatus.ENDED}, synchronize_session=False)
+        db.commit()
+
+    @staticmethod
     def get_organizer_events(db: Session, organizer_id: int, skip: int = 0, limit: int = 100, sort_by: str = "date", sort_desc: bool = False):
+        # Auto-update status
+        EventService.update_ended_events(db)
+        
         query = db.query(Event).filter(Event.organizer_id == organizer_id)
         
         if sort_by == "price":

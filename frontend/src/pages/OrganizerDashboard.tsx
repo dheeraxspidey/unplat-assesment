@@ -76,6 +76,7 @@ export default function OrganizerDashboard() {
     // Pagination State
     const [page, setPage] = useState(1)
     const [itemsPerPage] = useState(7)
+    const [hasMore, setHasMore] = useState(true)
 
     // Sort State
     const [sortBy, setSortBy] = useState("date")
@@ -112,11 +113,12 @@ export default function OrganizerDashboard() {
         if (!token) return
         try {
             const skip = (page - 1) * itemsPerPage
-            // Pass sort params
-            const response = await axios.get(`http://localhost:8000/api/events/my-events?skip=${skip}&limit=${itemsPerPage}&sort_by=${sortBy}&sort_desc=${sortDesc}`, {
+            // Pass sort params and limit+1 for pagination check
+            const response = await axios.get(`http://localhost:8000/api/events/my-events?skip=${skip}&limit=${itemsPerPage + 1}&sort_by=${sortBy}&sort_desc=${sortDesc}`, {
                 headers: { Authorization: `Bearer ${token}` }
             })
-            setEvents(response.data)
+            setHasMore(response.data.length > itemsPerPage)
+            setEvents(response.data.slice(0, itemsPerPage))
         } catch (error) {
             console.error("Failed to fetch events")
         }
@@ -466,8 +468,11 @@ export default function OrganizerDashboard() {
                                             <div className="text-sm">{event.location}</div>
                                         </TableCell>
                                         <TableCell className="text-center">
-                                            <Badge variant={event.status === "PUBLISHED" ? "default" : (event.status === "CANCELLED" ? "destructive" : "secondary")}>
-                                                {event.status}
+                                            <Badge variant={
+                                                (new Date(event.date) < new Date() && event.status === "PUBLISHED") ? "secondary" :
+                                                    (event.status === "PUBLISHED" ? "default" : (event.status === "CANCELLED" ? "destructive" : "secondary"))
+                                            }>
+                                                {(new Date(event.date) < new Date() && event.status === "PUBLISHED") ? "ENDED" : event.status}
                                             </Badge>
                                         </TableCell>
                                         <TableCell className="text-center">
@@ -526,7 +531,7 @@ export default function OrganizerDashboard() {
                     variant="outline"
                     size="sm"
                     onClick={() => setPage(prev => prev + 1)}
-                    disabled={events.length < itemsPerPage}
+                    disabled={!hasMore}
                 >
                     Next <ChevronRight className="h-4 w-4 ml-1" />
                 </Button>

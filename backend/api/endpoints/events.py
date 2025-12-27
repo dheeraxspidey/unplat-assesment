@@ -20,10 +20,15 @@ def read_events(
     search: Optional[str] = Query(None, description="Search by title or location"),
     skip: int = 0,
     limit: int = 100,
+    start_date: Optional[datetime] = Query(None, description="Filter events after this date"),
+    end_date: Optional[datetime] = Query(None, description="Filter events before this date"),
 ) -> Any:
     """
     Retrieve events.
     """
+    # Maintain data integrity
+    EventService.update_ended_events(db)
+    
     query = db.query(Event).filter(Event.status == status)
     
     # Or conditions for search
@@ -37,6 +42,10 @@ def read_events(
         query = query.filter(Event.location.ilike(f"%{location}%"))
     if type:
         query = query.filter(Event.event_type == type)
+    if start_date:
+        query = query.filter(Event.date >= start_date)
+    if end_date:
+        query = query.filter(Event.date <= end_date)
     return query.offset(skip).limit(limit).all()
 
 @router.post("/", response_model=EventResponse)

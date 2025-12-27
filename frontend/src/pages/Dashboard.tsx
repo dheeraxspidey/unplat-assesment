@@ -68,11 +68,12 @@ export default function Dashboard() {
 
         try {
             const skip = (page - 1) * itemsPerPage
-            const response = await axios.get(`http://localhost:8000/api/bookings/my-bookings?skip=${skip}&limit=${itemsPerPage}`, {
+            // Limit + 1 strategy
+            const response = await axios.get(`http://localhost:8000/api/bookings/my-bookings?skip=${skip}&limit=${itemsPerPage + 1}`, {
                 headers: { Authorization: `Bearer ${token}` }
             })
-            setBookings(response.data)
-            setHasMore(response.data.length === itemsPerPage)
+            setHasMore(response.data.length > itemsPerPage)
+            setBookings(response.data.slice(0, itemsPerPage))
         } catch (error) {
             console.error("Error fetching bookings")
         } finally {
@@ -83,6 +84,22 @@ export default function Dashboard() {
     const getImageUrl = (imageId?: string) => {
         if (!imageId) return "https://images.unsplash.com/photo-1459749411177-2a25413f312f?w=800&auto=format&fit=crop&q=60"
         return `http://localhost:8000/media/${imageId}`
+    }
+
+    const handleCancelBooking = async (bookingId: number) => {
+        if (!window.confirm("Are you sure you want to cancel this booking?")) return
+        const token = localStorage.getItem("token")
+        try {
+            await axios.post(`http://localhost:8000/api/bookings/${bookingId}/cancel`, {}, {
+                headers: { Authorization: `Bearer ${token}` }
+            })
+            setBookings(prev => prev.map(b =>
+                b.id === bookingId ? { ...b, status: "CANCELLED_BY_USER" } : b
+            ))
+            fetchStats()
+        } catch (error) {
+            console.error("Failed to cancel booking")
+        }
     }
 
     return (
@@ -202,6 +219,18 @@ export default function Dashboard() {
 
                                         <div className="mt-6 flex justify-between items-center border-t pt-4">
                                             <span className="font-bold text-lg">Total: ${totalPrice}</span>
+                                            {booking.status === "CONFIRMED" && (
+                                                <Button
+                                                    variant="destructive"
+                                                    size="sm"
+                                                    onClick={() => handleCancelBooking(booking.id)}
+                                                >
+                                                    Cancel Booking
+                                                </Button>
+                                            )}
+                                            {booking.status === "CANCELLED_BY_USER" && (
+                                                <Badge variant="destructive">Cancelled</Badge>
+                                            )}
                                         </div>
                                     </div>
                                 </Card>

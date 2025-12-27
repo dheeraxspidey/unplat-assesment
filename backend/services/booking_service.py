@@ -68,3 +68,23 @@ class BookingService:
             "total_bookings": total_bookings,
             "upcoming_events": upcoming_count
         }
+
+    @staticmethod
+    def cancel_booking_by_user(db: Session, booking_id: int, user_id: int):
+        booking = db.query(Booking).filter(Booking.id == booking_id).first()
+        if not booking:
+            raise HTTPException(status_code=404, detail="Booking not found")
+        if booking.user_id != user_id:
+            raise HTTPException(status_code=403, detail="Not authorized")
+        if booking.status != BookingStatus.CONFIRMED:
+            raise HTTPException(status_code=400, detail="Booking is not confirmed or already cancelled")
+            
+        # Lock event to update seats
+        event = db.query(Event).with_for_update().filter(Event.id == booking.event_id).first()
+        if event:
+            event.available_seats += booking.number_of_seats
+            
+        booking.status = BookingStatus.CANCELLED_BY_USER
+        db.commit()
+        db.refresh(booking)
+        return booking

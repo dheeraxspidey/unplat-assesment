@@ -9,6 +9,7 @@ class EventStatus(str, enum.Enum):
     DRAFT = "DRAFT"
     PUBLISHED = "PUBLISHED"
     CANCELLED = "CANCELLED"
+    ENDED = "ENDED"
 
 class EventType(str, enum.Enum):
     CONCERT = "CONCERT"

@@ -8,6 +8,7 @@ class BookingStatus(str, enum.Enum):
     CONFIRMED = "CONFIRMED"
     CANCELLED = "CANCELLED"
     CANCELLED_BY_ORGANIZER = "CANCELLED_BY_ORGANIZER"
+    CANCELLED_BY_USER = "CANCELLED_BY_USER"
 
 class Booking(Base):
     __tablename__ = "bookings"
