@@ -1,4 +1,5 @@
 import { Link, useNavigate, useLocation } from "react-router-dom"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
@@ -9,16 +10,28 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { CalendarDays, LayoutDashboard, LogOut, Ticket, Menu } from "lucide-react"
+import { CalendarDays, LayoutDashboard, LogOut, Ticket, Menu, Key, ShieldCheck } from "lucide-react"
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { useToast } from "@/components/ui/use-toast"
+import api from "@/lib/api"
 
 export default function Navbar() {
     const navigate = useNavigate()
     const location = useLocation()
     const token = localStorage.getItem("token")
+    const { toast } = useToast()
 
-    // Rudimentary role check - in real app parse JWT
-    // For now, if we are on /organizer, we assume organizer context
-    // Or we can save role in localStorage on login
+    const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false)
+    const [isLoading, setIsLoading] = useState(false)
 
     const handleLogout = () => {
         localStorage.clear()
@@ -39,13 +52,39 @@ export default function Navbar() {
         return decoded?.sub || "user@example.com"
     }
 
-    // For full name we might need to store it or fetch it, 
-    // but typically sub is email. Let's use email for now.
-
     const role = localStorage.getItem("role")
     const userEmail = getUserEmail()
 
     const isActive = (path: string) => location.pathname === path
+
+    const handleChangePassword = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault()
+        setIsLoading(true)
+        const formData = new FormData(e.currentTarget)
+        const old_password = formData.get("old_password")
+        const new_password = formData.get("new_password")
+        const confirm_password = formData.get("confirm_password")
+
+        if (new_password !== confirm_password) {
+            toast({ title: "Passwords don't match", variant: "destructive" })
+            setIsLoading(false)
+            return
+        }
+
+        try {
+            await api.post("/api/auth/change-password", { old_password, new_password })
+            toast({ title: "Success", description: "Password changed successfully." })
+            setIsChangePasswordOpen(false)
+        } catch (error: any) {
+            toast({
+                title: "Failed",
+                description: error.response?.data?.detail || "Could not change password.",
+                variant: "destructive"
+            })
+        } finally {
+            setIsLoading(false)
+        }
+    }
 
     return (
         <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -154,6 +193,9 @@ export default function Navbar() {
                                             <CalendarDays className="mr-2 h-4 w-4" /> Organizer Studio
                                         </DropdownMenuItem>
                                     )}
+                                    <DropdownMenuItem onClick={() => setIsChangePasswordOpen(true)}>
+                                        <Key className="mr-2 h-4 w-4" /> Change Password
+                                    </DropdownMenuItem>
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
                                         <LogOut className="mr-2 h-4 w-4" /> Log out
@@ -169,6 +211,44 @@ export default function Navbar() {
                     )}
                 </div>
             </div>
+
+            {/* Change Password Dialog */}
+            <Dialog open={isChangePasswordOpen} onOpenChange={setIsChangePasswordOpen}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <ShieldCheck className="h-5 w-5 text-primary" />
+                            Update Password
+                        </DialogTitle>
+                        <DialogDescription>
+                            Enter your current password and choose a secure new one.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleChangePassword} className="space-y-4 py-4">
+                        <div className="grid gap-2">
+                            <Label htmlFor="old_password">Current Password</Label>
+                            <Input id="old_password" name="old_password" type="password" required />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="new_password">New Password</Label>
+                            <Input id="new_password" name="new_password" type="password" required />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="confirm_password">Confirm New Password</Label>
+                            <Input id="confirm_password" name="confirm_password" type="password" required />
+                        </div>
+                        <DialogFooter className="pt-4">
+                            <Button type="button" variant="outline" onClick={() => setIsChangePasswordOpen(false)}>
+                                Cancel
+                            </Button>
+                            <Button type="submit" disabled={isLoading}>
+                                {isLoading ? "Updating..." : "Update Password"}
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
         </header>
     )
 }
+

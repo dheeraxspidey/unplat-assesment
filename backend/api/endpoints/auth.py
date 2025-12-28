@@ -11,7 +11,7 @@ from core.config import settings
 from core.database import get_db
 from models.user import User
 from schemas.token import Token
-from schemas.user import UserCreate, UserResponse
+from schemas.user import UserCreate, UserResponse, PasswordChange
 
 router = APIRouter()
 
@@ -68,3 +68,19 @@ def login_access_token(
         ),
         "token_type": "bearer",
     }
+
+@router.post("/change-password")
+def change_password(
+    password_in: PasswordChange,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(deps.get_current_active_user)
+) -> Any:
+    """
+    Change user password.
+    """
+    if not security.verify_password(password_in.old_password, current_user.hashed_password):
+        raise HTTPException(status_code=400, detail="Incorrect old password")
+    
+    current_user.hashed_password = security.get_password_hash(password_in.new_password)
+    db.commit()
+    return {"message": "Password updated successfully"}

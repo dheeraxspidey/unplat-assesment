@@ -1,5 +1,5 @@
 import { useState } from "react"
-import axios from "axios"
+import api from "@/lib/api"
 import { useForm } from "react-hook-form"
 import { useNavigate, Link } from "react-router-dom"
 import { Button } from "@/components/ui/button"
@@ -30,7 +30,7 @@ export default function Login() {
         formData.append("password", data.password)
 
         try {
-            const response = await axios.post("http://localhost:8000/api/auth/login", formData, {
+            const response = await api.post("/api/auth/login", formData, {
                 headers: { "Content-Type": "application/x-www-form-urlencoded" }
             })
 

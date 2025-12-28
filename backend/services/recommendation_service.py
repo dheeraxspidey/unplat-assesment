@@ -12,7 +12,6 @@ class RecommendationService:
     def _tokenize(text: str) -> set[str]:
         if not text:
             return set()
-        # Simple whitespace tokenization + lowercasing
         return set(word.lower() for word in text.split() if len(word) > 3)
 
     @staticmethod
@@ -29,10 +28,10 @@ class RecommendationService:
         if not user:
             return []
 
-        # 1. Build User Profile Vector (Keywords)
+
         user_keywords = set()
         
-        # Explicit Interests
+
         if user.interests:
             try:
                 interests_list = json.loads(user.interests)
@@ -40,9 +39,9 @@ class RecommendationService:
                     for interest in interests_list:
                         user_keywords.add(interest.lower())
             except:
-                pass # Handle malformed JSON safely
+                pass
         
-        # Implicit History
+
         past_bookings = db.query(Booking).filter(Booking.user_id == user_id).all()
         for booking in past_bookings:
             event = booking.event
@@ -50,19 +49,22 @@ class RecommendationService:
             user_keywords.update(RecommendationService._tokenize(event.description))
             user_keywords.add(event.event_type.value.lower())
 
-        # 2. Fetch Candidates (Upcoming Events)
+
         from datetime import datetime
-        now = datetime.utcnow()
+        from services.event_service import EventService
+        EventService.update_ended_events(db)
+        
+        now = datetime.now()
         candidate_events = db.query(Event).filter(
             Event.status == EventStatus.PUBLISHED,
             Event.date > now
         ).all()
 
-        # Filter out already booked events
+
         booked_event_ids = {b.event_id for b in past_bookings}
         candidate_events = [e for e in candidate_events if e.id not in booked_event_ids]
 
-        # 3. Score Candidates
+
         scored_events = []
         for event in candidate_events:
             event_keywords = RecommendationService._tokenize(event.title)
@@ -72,7 +74,7 @@ class RecommendationService:
             score = RecommendationService._calculate_jaccard_similarity(user_keywords, event_keywords)
             scored_events.append((event, score))
 
-        # 4. Rank
+
         scored_events.sort(key=lambda x: x[1], reverse=True)
 
         return [e for e, s in scored_events[:limit]]

@@ -38,12 +38,12 @@ def read_events(
     """
     Retrieve events.
     """
-    # Maintain data integrity
+
     EventService.update_ended_events(db)
     
     query = db.query(Event).filter(Event.status == status)
     
-    # Or conditions for search
+
     from sqlalchemy import or_
 
     if search:
@@ -105,6 +105,33 @@ def read_my_events(
     """
     return EventService.get_organizer_events(db, current_user.id, skip=skip, limit=limit, sort_by=sort_by, sort_desc=sort_desc)
 
+@router.get("/stats/overview", response_model=dict)
+def get_organizer_stats(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(deps.get_current_organizer),
+) -> Any:
+    """
+    Get aggregated statistics for the organizer.
+    """
+    return EventService.get_organizer_stats(db, current_user.id)
+
+@router.get("/{id}", response_model=EventResponse)
+def get_event_by_id(
+    *,
+    db: Session = Depends(get_db),
+    id: int,
+) -> Any:
+    """
+    Get a single event by ID. Updates status if event has ended.
+    """
+
+    EventService.update_ended_events(db)
+    
+    event = db.query(Event).filter(Event.id == id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    return event
+
 @router.put("/{id}", response_model=EventResponse)
 def update_event(
     *,
@@ -130,12 +157,17 @@ def cancel_event(
     """
     return EventService.cancel_event(db, id, current_user.id)
 
-@router.get("/stats/overview", response_model=dict)
-def get_organizer_stats(
+@router.delete("/{id}/permanent", response_model=dict)
+def delete_draft_event(
+    *,
     db: Session = Depends(get_db),
+    id: int,
     current_user: User = Depends(deps.get_current_organizer),
 ) -> Any:
     """
-    Get aggregated statistics for the organizer.
+    Permanently delete a DRAFT event (Organizer only).
+    Only DRAFT events can be permanently deleted.
     """
-    return EventService.get_organizer_stats(db, current_user.id)
+    return EventService.delete_draft_event(db, id, current_user.id)
+
+

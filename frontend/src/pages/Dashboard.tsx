@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import axios from "axios"
+import api from "@/lib/api"
 import { Link } from "react-router-dom"
 import {
     Card,
@@ -52,9 +52,7 @@ export default function Dashboard() {
         const token = localStorage.getItem("token")
         if (!token) return
         try {
-            const response = await axios.get("http://localhost:8000/api/bookings/my-stats", {
-                headers: { Authorization: `Bearer ${token}` }
-            })
+            const response = await api.get("/api/bookings/my-stats")
             setStats(response.data)
         } catch (error) {
             console.error("Error fetching stats")
@@ -69,9 +67,7 @@ export default function Dashboard() {
         try {
             const skip = (page - 1) * itemsPerPage
             // Limit + 1 strategy
-            const response = await axios.get(`http://localhost:8000/api/bookings/my-bookings?skip=${skip}&limit=${itemsPerPage + 1}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            })
+            const response = await api.get(`/api/bookings/my-bookings?skip=${skip}&limit=${itemsPerPage + 1}`)
             setHasMore(response.data.length > itemsPerPage)
             setBookings(response.data.slice(0, itemsPerPage))
         } catch (error) {
@@ -83,16 +79,14 @@ export default function Dashboard() {
 
     const getImageUrl = (imageId?: string) => {
         if (!imageId) return "https://images.unsplash.com/photo-1459749411177-2a25413f312f?w=800&auto=format&fit=crop&q=60"
-        return `http://localhost:8000/media/${imageId}`
+        return `${import.meta.env.VITE_API_URL}/media/${imageId}`
     }
 
     const handleCancelBooking = async (bookingId: number) => {
         if (!window.confirm("Are you sure you want to cancel this booking?")) return
-        const token = localStorage.getItem("token")
+
         try {
-            await axios.post(`http://localhost:8000/api/bookings/${bookingId}/cancel`, {}, {
-                headers: { Authorization: `Bearer ${token}` }
-            })
+            await api.post(`/api/bookings/${bookingId}/cancel`, {})
             setBookings(prev => prev.map(b =>
                 b.id === bookingId ? { ...b, status: "CANCELLED_BY_USER" } : b
             ))
@@ -100,6 +94,18 @@ export default function Dashboard() {
         } catch (error) {
             console.error("Failed to cancel booking")
         }
+    }
+
+    const formatStatus = (status: string) => {
+        return status.split('_').map(word =>
+            word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+        ).join(' ')
+    }
+
+    const getStatusVariant = (status: string) => {
+        if (status.includes("CANCELLED")) return "destructive"
+        if (status === "CONFIRMED") return "default"
+        return "secondary"
     }
 
     return (
@@ -190,8 +196,10 @@ export default function Dashboard() {
                                         <div className="space-y-4">
                                             <div className="flex justify-between items-start">
                                                 <Badge className="bg-primary/90 hover:bg-primary">{booking.event.event_type}</Badge>
-                                                <Badge variant="secondary" className="bg-green-100 text-green-700 hover:bg-green-200 border-none">
-                                                    {booking.status}
+                                                <Badge variant={getStatusVariant(booking.status)} className={
+                                                    booking.status === "CONFIRMED" ? "bg-green-600 hover:bg-green-700" : ""
+                                                }>
+                                                    {formatStatus(booking.status)}
                                                 </Badge>
                                             </div>
 
@@ -227,9 +235,6 @@ export default function Dashboard() {
                                                 >
                                                     Cancel Booking
                                                 </Button>
-                                            )}
-                                            {booking.status === "CANCELLED_BY_USER" && (
-                                                <Badge variant="destructive">Cancelled</Badge>
                                             )}
                                         </div>
                                     </div>

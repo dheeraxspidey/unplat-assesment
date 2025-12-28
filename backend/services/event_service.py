@@ -8,7 +8,7 @@ class EventService:
     @staticmethod
     def create_event(
         db: Session, 
-        event_dict: dict, # Changed from Schema to dict to handle Form + File
+        event_dict: dict, 
         organizer_id: int, 
         image_file = None, 
         image_url: str = None
@@ -49,7 +49,7 @@ class EventService:
             except Exception as e:
                 print(f"Failed to download image: {e}")
 
-        # Initially available seats = total seats
+
         event = Event(
             **event_dict,
             image_id=image_id,
@@ -64,6 +64,7 @@ class EventService:
     @staticmethod
     def update_ended_events(db: Session):
         from datetime import datetime
+        # Compare in UTC for consistency with frontend timestamps
         now = datetime.utcnow()
         db.query(Event).filter(
             Event.status == EventStatus.PUBLISHED,
@@ -73,7 +74,7 @@ class EventService:
 
     @staticmethod
     def get_organizer_events(db: Session, organizer_id: int, skip: int = 0, limit: int = 100, sort_by: str = "date", sort_desc: bool = False):
-        # Auto-update status
+
         EventService.update_ended_events(db)
         
         query = db.query(Event).filter(Event.organizer_id == organizer_id)
@@ -86,7 +87,7 @@ class EventService:
         elif sort_by == "status":
             sort_attr = Event.status
         else:
-            # Default to date
+
             sort_attr = Event.date
             
         if sort_desc:
@@ -104,7 +105,7 @@ class EventService:
         
         update_data = event_in.model_dump(exclude_unset=True)
         
-        # Handle seat logic if total_seats is changed
+
         if "total_seats" in update_data:
             seat_diff = update_data["total_seats"] - event.total_seats
             if event.available_seats + seat_diff < 0:
@@ -127,7 +128,7 @@ class EventService:
          
          event.status = EventStatus.CANCELLED
          
-         # Cascade cancellation to bookings
+
          from models.booking import Booking, BookingStatus
          db.query(Booking).filter(Booking.event_id == event_id).update(
              {Booking.status: BookingStatus.CANCELLED_BY_ORGANIZER}, synchronize_session=False
@@ -145,7 +146,7 @@ class EventService:
         total_tickets_sold = sum(e.total_seats - e.available_seats for e in events)
         total_revenue = sum((e.total_seats - e.available_seats) * e.price for e in events)
         
-        # Count active events (Published)
+
         active_events = sum(1 for e in events if e.status == EventStatus.PUBLISHED)
 
         return {
@@ -154,3 +155,33 @@ class EventService:
             "total_revenue": total_revenue,
             "active_events": active_events
         }
+
+    @staticmethod
+    def delete_draft_event(db: Session, event_id: int, organizer_id: int) -> dict:
+        """Permanently delete a DRAFT event from the database."""
+        event = db.query(Event).filter(
+            Event.id == event_id, 
+            Event.organizer_id == organizer_id
+        ).first()
+        
+        if not event:
+            raise HTTPException(status_code=404, detail="Event not found")
+        
+        if event.status != EventStatus.DRAFT:
+            raise HTTPException(
+                status_code=400, 
+                detail="Only DRAFT events can be permanently deleted. Cancel published events instead."
+            )
+        
+
+        if event.image_id:
+            from pathlib import Path
+            image_path = Path("media") / event.image_id
+            if image_path.exists():
+                image_path.unlink()
+        
+        event_title = event.title
+        db.delete(event)
+        db.commit()
+        
+        return {"message": f"Event '{event_title}' has been permanently deleted."}

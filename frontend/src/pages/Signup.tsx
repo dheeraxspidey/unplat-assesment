@@ -1,5 +1,5 @@
 import { useState } from "react"
-import axios from "axios"
+import api from "@/lib/api"
 import { useForm } from "react-hook-form"
 import { useNavigate, Link } from "react-router-dom"
 import { Button } from "@/components/ui/button"
@@ -33,7 +33,7 @@ export default function Signup() {
         setLoading(true)
         try {
             const payload = { ...data, interests: selectedInterests }
-            await axios.post("http://localhost:8000/api/auth/signup", payload)
+            await api.post("/api/auth/signup", payload)
             toast({ title: "Account created", description: "Please login with your new credentials." })
             navigate("/login")
         } catch (error) {

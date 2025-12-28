@@ -7,24 +7,26 @@ from schemas.booking import BookingCreate
 class BookingService:
     @staticmethod
     def create_booking(db: Session, booking_in: BookingCreate, user_id: int) -> Booking:
-        # Atomic Transaction
         try:
-            # High Concurrency Logic: Lock the event row
-            # This ensures no other transaction can read/modify this event until we commit
+            # Lock the event row for high concurrency safety
             event = db.query(Event).with_for_update().filter(Event.id == booking_in.event_id).first()
             
             if not event:
                 raise HTTPException(status_code=404, detail="Event not found")
             
             if event.status != EventStatus.PUBLISHED:
-                raise HTTPException(status_code=400, detail="Event is not published")
+                raise HTTPException(status_code=400, detail="Event is not published or has already ended")
+            
+            from datetime import datetime
+            if event.date < datetime.utcnow():
+                event.status = EventStatus.ENDED
+                db.commit()
+                raise HTTPException(status_code=400, detail="This event has already ended and cannot be booked")
             
             if event.available_seats < booking_in.number_of_seats:
                 raise HTTPException(status_code=400, detail="Not enough seats available")
             
-            # Use specific error message for duplicate bookings if needed, 
-            # though requirements didn't strictly forbid multiple tickets per user.
-            # Assuming 1 ticket per request.
+
             
             event.available_seats -= booking_in.number_of_seats
             
@@ -57,8 +59,8 @@ class BookingService:
         
         total_bookings = len(bookings)
         
-        # Count upcoming confirmed events
-        now = datetime.now()
+
+        now = datetime.utcnow()
         upcoming_count = 0
         for b in bookings:
             if b.status == BookingStatus.CONFIRMED and b.event.date > now:
@@ -79,7 +81,7 @@ class BookingService:
         if booking.status != BookingStatus.CONFIRMED:
             raise HTTPException(status_code=400, detail="Booking is not confirmed or already cancelled")
             
-        # Lock event to update seats
+
         event = db.query(Event).with_for_update().filter(Event.id == booking.event_id).first()
         if event:
             event.available_seats += booking.number_of_seats

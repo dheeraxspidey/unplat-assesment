@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import axios from "axios"
+import api from "@/lib/api"
 import { useParams, useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import {
@@ -25,6 +25,7 @@ interface Event {
     price: number
     image_id?: string
     event_type: string
+    status: string
 }
 
 export default function EventDetail() {
@@ -43,11 +44,11 @@ export default function EventDetail() {
 
     const fetchEvent = async () => {
         try {
-            const response = await axios.get("http://localhost:8000/api/events/?status=PUBLISHED")
-            const found = response.data.find((e: Event) => e.id === Number(id))
-            setEvent(found || null)
+            const response = await api.get(`/api/events/${id}`)
+            setEvent(response.data)
         } catch (error) {
             console.error("Error fetching event")
+            setEvent(null)
         } finally {
             setLoading(false)
         }
@@ -63,11 +64,9 @@ export default function EventDetail() {
 
         setBookingLoading(true)
         try {
-            await axios.post("http://localhost:8000/api/bookings/", {
+            await api.post("/api/bookings/", {
                 event_id: Number(id),
                 number_of_seats: seats
-            }, {
-                headers: { Authorization: `Bearer ${token}` }
             })
             toast({ title: "Booking successful!", description: "Check your dashboard for the ticket." })
             navigate("/dashboard")
@@ -80,7 +79,7 @@ export default function EventDetail() {
 
     const getImageUrl = (imageId?: string) => {
         if (!imageId) return "https://images.unsplash.com/photo-1459749411177-2a25413f312f?w=800&auto=format&fit=crop&q=60"
-        return `http://localhost:8000/media/${imageId}`
+        return `${import.meta.env.VITE_API_URL}/media/${imageId}`
     }
 
     if (loading) return <div className="p-8 text-center">Loading event...</div>
@@ -161,6 +160,11 @@ export default function EventDetail() {
                             {localStorage.getItem("role") === "ORGANIZER" ? (
                                 <Button className="w-full" size="lg" disabled>
                                     Organizers cannot book tickets
+                                </Button>
+                            ) : (event.status !== "PUBLISHED" || new Date(event.date) < new Date()) ? (
+                                <Button className="w-full" size="lg" disabled variant="secondary">
+                                    {(event.status === "ENDED" || new Date(event.date) < new Date()) ? "Event Has Ended" :
+                                        event.status === "CANCELLED" ? "Event Cancelled" : "Booking Unavailable"}
                                 </Button>
                             ) : (
                                 <Button className="w-full" size="lg" onClick={handleBook} disabled={bookingLoading || event.available_seats <= 0}>

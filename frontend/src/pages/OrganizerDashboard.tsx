@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react"
-import axios from "axios"
+import api from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -35,7 +35,7 @@ import {
     TableRow,
 } from "@/components/ui/table"
 import { useToast } from "@/components/ui/use-toast"
-import { Plus, BarChart3, Calendar as CalendarIcon, FileText, UploadCloud, Edit, Trash2, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, X, Upload } from "lucide-react"
+import { Plus, BarChart3, Calendar as CalendarIcon, FileText, UploadCloud, Edit, Trash2, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, X, Upload, XCircle } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -65,15 +65,17 @@ export default function OrganizerDashboard() {
     const [editingEvent, setEditingEvent] = useState<Event | null>(null)
     const [isEditOpen, setIsEditOpen] = useState(false)
     const [eventToCancel, setEventToCancel] = useState<Event | null>(null)
+    const [eventToDelete, setEventToDelete] = useState<Event | null>(null)
     const [selectedFileName, setSelectedFileName] = useState<string | null>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
 
-    // Date & Time State for Create Event
     const [date, setDate] = useState<Date | undefined>(undefined)
-    const [time, setTime] = useState("12:00")
-    // State to control calendar popover visibility
+    const [time, setTime] = useState(() => {
+        const now = new Date()
+        now.setHours(now.getHours() + 1)
+        return format(now, "HH:mm")
+    })
     const [isCalendarOpen, setIsCalendarOpen] = useState(false)
-    // Track intended status for event creation
     const [submitStatus, setSubmitStatus] = useState<"DRAFT" | "PUBLISHED">("DRAFT")
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -89,16 +91,13 @@ export default function OrganizerDashboard() {
         }
     }
 
-    // Pagination State
     const [page, setPage] = useState(1)
     const [itemsPerPage] = useState(7)
     const [hasMore, setHasMore] = useState(true)
 
-    // Sort State
     const [sortBy, setSortBy] = useState("date")
     const [sortDesc, setSortDesc] = useState(false)
 
-    // Stats State
     const [stats, setStats] = useState({
         total_events: 0,
         tickets_sold: 0,
@@ -115,9 +114,7 @@ export default function OrganizerDashboard() {
         const token = localStorage.getItem("token")
         if (!token) return
         try {
-            const response = await axios.get("http://localhost:8000/api/events/stats/overview", {
-                headers: { Authorization: `Bearer ${token}` }
-            })
+            const response = await api.get("/api/events/stats/overview")
             setStats(response.data)
         } catch (error) {
             console.error("Failed to fetch stats")
@@ -129,9 +126,7 @@ export default function OrganizerDashboard() {
         if (!token) return
         try {
             const skip = (page - 1) * itemsPerPage
-            const response = await axios.get(`http://localhost:8000/api/events/my-events?skip=${skip}&limit=${itemsPerPage + 1}&sort_by=${sortBy}&sort_desc=${sortDesc}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            })
+            const response = await api.get(`/api/events/my-events?skip=${skip}&limit=${itemsPerPage + 1}&sort_by=${sortBy}&sort_desc=${sortDesc}`)
             setHasMore(response.data.length > itemsPerPage)
             setEvents(response.data.slice(0, itemsPerPage))
         } catch (error) {
@@ -151,42 +146,56 @@ export default function OrganizerDashboard() {
 
     const getImageUrl = (imageId?: string) => {
         if (!imageId) return "https://images.unsplash.com/photo-1459749411177-2a25413f312f?w=800&auto=format&fit=crop&q=60"
-        return `http://localhost:8000/media/${imageId}`
+        return `${import.meta.env.VITE_API_URL}/media/${imageId}`
     }
 
     const handleCreateEvent = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
         setIsLoading(true)
-        const token = localStorage.getItem("token")
 
-        // Use state-based status
+
         const status = submitStatus;
 
         const formData = new FormData(e.currentTarget)
         formData.set("status", status)
 
-        // Handle Date & Time manually
         if (date) {
             const dateStr = format(date, "yyyy-MM-dd")
             const dateTime = new Date(`${dateStr}T${time}`)
+
+            if (dateTime < new Date()) {
+                toast({
+                    title: "Invalid Date",
+                    description: "You cannot create an event in the past. Please check the time.",
+                    variant: "destructive"
+                })
+                setIsLoading(false)
+                return
+            }
+
             formData.set("date", dateTime.toISOString())
+        } else {
+            toast({
+                title: "Date Required",
+                description: "Please pick a date for your event.",
+                variant: "destructive"
+            })
+            setIsLoading(false)
+            return
         }
 
         try {
-            await axios.post("http://localhost:8000/api/events/", formData, {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            })
+            await api.post("/api/events/", formData)
             toast({
                 title: status === "PUBLISHED" ? "Event Published!" : "Draft Saved",
                 description: status === "PUBLISHED" ? "Your event is now live." : "You can publish it later."
             })
             setOpen(false)
-            // Reset form state
             setSelectedFileName(null)
             setDate(undefined)
-            setTime("12:00")
+            const now = new Date()
+            now.setHours(now.getHours() + 1)
+            setTime(format(now, "HH:mm"))
             if (fileInputRef.current) fileInputRef.current.value = ""
             fetchMyEvents()
         } catch (error) {
@@ -200,13 +209,25 @@ export default function OrganizerDashboard() {
         e.preventDefault()
         if (!editingEvent) return
         setIsLoading(true)
-        const token = localStorage.getItem("token")
+
 
         const formData = new FormData(e.currentTarget)
+        const dateValue = formData.get("date") as string
+
+        if (new Date(dateValue) < new Date()) {
+            toast({
+                title: "Invalid Date",
+                description: "You cannot update an event to a past date.",
+                variant: "destructive"
+            })
+            setIsLoading(false)
+            return
+        }
+
         const data = {
             title: formData.get("title"),
             event_type: formData.get("event_type"),
-            date: formData.get("date"),
+            date: dateValue,
             location: formData.get("location"),
             total_seats: Number(formData.get("total_seats")),
             price: Number(formData.get("price")),
@@ -214,9 +235,8 @@ export default function OrganizerDashboard() {
         }
 
         try {
-            await axios.put(`http://localhost:8000/api/events/${editingEvent.id}`, data, {
+            await api.put(`/api/events/${editingEvent.id}`, data, {
                 headers: {
-                    Authorization: `Bearer ${token}`,
                     "Content-Type": "application/json"
                 }
             })
@@ -236,13 +256,12 @@ export default function OrganizerDashboard() {
     }
 
     const handleQuickPublish = async (event: Event) => {
-        const token = localStorage.getItem("token")
+
         try {
-            await axios.put(`http://localhost:8000/api/events/${event.id}`,
+            await api.put(`/api/events/${event.id}`,
                 { status: "PUBLISHED" },
                 {
                     headers: {
-                        Authorization: `Bearer ${token}`,
                         "Content-Type": "application/json"
                     }
                 }
@@ -261,16 +280,31 @@ export default function OrganizerDashboard() {
     const onConfirmCancelEvent = async () => {
         if (!eventToCancel) return
 
-        const token = localStorage.getItem("token")
+
         try {
-            await axios.delete(`http://localhost:8000/api/events/${eventToCancel.id}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            })
+            await api.delete(`/api/events/${eventToCancel.id}`)
             toast({ title: "Event Cancelled", description: "The event has been cancelled." })
             fetchMyEvents()
             setEventToCancel(null)
         } catch (error) {
             toast({ title: "Failed to cancel event", variant: "destructive" })
+        }
+    }
+
+    const onConfirmDeleteDraft = async () => {
+        if (!eventToDelete) return
+
+        try {
+            await api.delete(`/api/events/${eventToDelete.id}/permanent`)
+            toast({ title: "Draft Deleted", description: "The draft event has been permanently deleted." })
+            fetchMyEvents()
+            setEventToDelete(null)
+        } catch (error: any) {
+            toast({
+                title: "Failed to delete draft",
+                description: error.response?.data?.detail || "Could not delete the draft event.",
+                variant: "destructive"
+            })
         }
     }
 
@@ -419,9 +453,17 @@ export default function OrganizerDashboard() {
                                                         type="time"
                                                         value={time}
                                                         onChange={(e) => setTime(e.target.value)}
-                                                        className="w-[120px] h-12"
+                                                        className={cn(
+                                                            "w-[120px] h-12",
+                                                            date && format(date, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd") &&
+                                                            time < format(new Date(), "HH:mm") && "border-destructive text-destructive"
+                                                        )}
                                                     />
                                                 </div>
+                                                {date && format(date, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd") &&
+                                                    time < format(new Date(), "HH:mm") && (
+                                                        <p className="text-[10px] text-destructive font-medium">Selected time is in the past for today.</p>
+                                                    )}
                                             </div>
                                         </div>
 
@@ -590,7 +632,7 @@ export default function OrganizerDashboard() {
                                         <TableCell className="text-center">
                                             <Badge variant={
                                                 (new Date(event.date) < new Date() && event.status === "PUBLISHED") ? "secondary" :
-                                                    (event.status === "PUBLISHED" ? "default" : (event.status === "CANCELLED" ? "destructive" : "secondary"))
+                                                    (event.status === "PUBLISHED" ? "success" : (event.status === "CANCELLED" ? "destructive" : "secondary"))
                                             }>
                                                 {(new Date(event.date) < new Date() && event.status === "PUBLISHED") ? "ENDED" : event.status}
                                             </Badge>
@@ -628,15 +670,29 @@ export default function OrganizerDashboard() {
                                                 >
                                                     <Edit className="h-4 w-4" />
                                                 </Button>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                                                    onClick={() => openCancelDialog(event)}
-                                                    disabled={event.status === "CANCELLED"}
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
+                                                {/* Cancel for PUBLISHED, Delete for DRAFT */}
+                                                {event.status === "DRAFT" ? (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                                        onClick={() => setEventToDelete(event)}
+                                                        title="Delete Draft"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                ) : (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                                        onClick={() => openCancelDialog(event)}
+                                                        disabled={event.status === "CANCELLED"}
+                                                        title="Cancel Event"
+                                                    >
+                                                        <XCircle className="h-4 w-4" />
+                                                    </Button>
+                                                )}
                                             </div>
                                         </TableCell>
                                     </TableRow>
@@ -703,7 +759,15 @@ export default function OrganizerDashboard() {
                                     </div>
                                     <div className="grid gap-2">
                                         <Label htmlFor="edit-date">Date</Label>
-                                        <Input id="edit-date" name="date" type="datetime-local" defaultValue={editingEvent.date} className="h-12" required />
+                                        <Input
+                                            id="edit-date"
+                                            name="date"
+                                            type="datetime-local"
+                                            defaultValue={editingEvent.date}
+                                            min={new Date().toISOString().slice(0, 16)}
+                                            className="h-12"
+                                            required
+                                        />
                                     </div>
                                 </div>
                                 <div className="grid gap-2">
@@ -741,7 +805,7 @@ export default function OrganizerDashboard() {
                 <DialogContent className="sm:max-w-[425px]">
                     <DialogHeader>
                         <DialogTitle className="text-destructive flex items-center gap-2">
-                            <Trash2 className="h-5 w-5" /> Cancel Event?
+                            <XCircle className="h-5 w-5" /> Cancel Event?
                         </DialogTitle>
                         <DialogDescription className="pt-2">
                             Are you sure you want to cancel <strong>{eventToCancel?.title}</strong>?
@@ -758,6 +822,33 @@ export default function OrganizerDashboard() {
                             onClick={onConfirmCancelEvent}
                         >
                             Yes, Cancel Event
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete Draft Confirmation Dialog */}
+            <Dialog open={!!eventToDelete} onOpenChange={(open) => !open && setEventToDelete(null)}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle className="text-destructive flex items-center gap-2">
+                            <Trash2 className="h-5 w-5" /> Delete Draft?
+                        </DialogTitle>
+                        <DialogDescription className="pt-2">
+                            Are you sure you want to permanently delete <strong>{eventToDelete?.title}</strong>?
+                            <br /><br />
+                            This will remove the event from the database. This action cannot be undone.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="gap-2 sm:justify-end">
+                        <Button variant="outline" onClick={() => setEventToDelete(null)}>
+                            Keep Draft
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={onConfirmDeleteDraft}
+                        >
+                            Yes, Delete Draft
                         </Button>
                     </DialogFooter>
                 </DialogContent>

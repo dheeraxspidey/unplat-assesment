@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
-import axios from "axios"
-import { Search, ChevronLeft, ChevronRight, CalendarIcon } from "lucide-react"
+import api from "@/lib/api"
+import { Search, ChevronLeft, ChevronRight, CalendarIcon, Compass } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
@@ -83,12 +83,10 @@ export default function Explore() {
                     // Or could redirect.
                     response = { data: [] }
                 } else {
-                    response = await axios.get(`http://localhost:8000/api/events/recommendations?limit=3`, {
-                        headers: { Authorization: `Bearer ${token}` }
-                    })
+                    response = await api.get(`/api/events/recommendations?limit=3`)
                 }
             } else {
-                let url = `http://localhost:8000/api/events/?status=PUBLISHED&skip=${skip}&limit=${itemsPerPage + 1}`
+                let url = `/api/events/?status=PUBLISHED&skip=${skip}&limit=${itemsPerPage + 1}`
 
                 if (selectedType !== "ALL") {
                     url += `&type=${selectedType}`
@@ -102,7 +100,7 @@ export default function Explore() {
                 if (dateRange.end) {
                     url += `&end_date=${dateRange.end.toISOString()}`
                 }
-                response = await axios.get(url)
+                response = await api.get(url)
             }
 
             // setEvents(response.data) -- logic continues below with pagination update
@@ -134,7 +132,7 @@ export default function Explore() {
             {/* Hero Section */}
             <section className="flex flex-col items-center justify-center space-y-6 pt-12 pb-8 text-center bg-gradient-to-b from-primary/5 to-transparent rounded-3xl border border-primary/10">
                 <div className="space-y-2">
-                    <h1 className="text-4xl font-extrabold tracking-tight lg:text-6xl text-primary">
+                    <h1 className="text-4xl font-extrabold tracking-tight lg:text-7xl text-primary font-tagesschrift">
                         Find Your Vibe.
                     </h1>
                     <p className="max-w-[700px] text-lg text-muted-foreground mx-auto">
@@ -163,7 +161,9 @@ export default function Explore() {
                     <TabsList className="h-12 bg-muted/50 p-1">
                         <TabsTrigger value="ALL" className="h-full px-6 rounded-sm">All Events</TabsTrigger>
                         {localStorage.getItem("role") !== "ORGANIZER" && (
-                            <TabsTrigger value="FOR_YOU" className="h-full px-6 rounded-sm font-semibold text-primary">For You ✨</TabsTrigger>
+                            <TabsTrigger value="FOR_YOU" className="h-full px-6 rounded-sm font-semibold text-primary inline-flex items-center gap-2">
+                                <Compass className="h-4 w-4" /> For You
+                            </TabsTrigger>
                         )}
                         <TabsTrigger value="CONCERT" className="h-full px-6 rounded-sm">Concerts</TabsTrigger>
                         <TabsTrigger value="CONFERENCE" className="h-full px-6 rounded-sm">Conferences</TabsTrigger>

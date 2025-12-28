@@ -1,76 +1,133 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
- 
+
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
- 
+    /* Burnt Orange Theme (Light) */
+    --background: 30 20% 98%;
+    /* Warm Off-white */
+    --foreground: 20 14.3% 4.1%;
+    /* Warm Black */
+
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
- 
+    --card-foreground: 20 14.3% 4.1%;
+
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
- 
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
- 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
- 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
- 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
- 
+    --popover-foreground: 20 14.3% 4.1%;
+
+    --primary: 18 80% 50%;
+    /* Burnt Orange */
+    --primary-foreground: 30 20% 98%;
+
+    --secondary: 30 20% 94%;
+    --secondary-foreground: 24 9.8% 10%;
+
+    --muted: 30 20% 94%;
+    --muted-foreground: 25 5.3% 44.7%;
+
+    --accent: 30 20% 94%;
+    --accent-foreground: 24 9.8% 10%;
+
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
- 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
- 
-    --radius: 0.5rem;
+    --destructive-foreground: 60 9.1% 97.8%;
+
+    /* Success (for Published status) - Green */
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+
+    --border: 30 10% 88%;
+    --input: 30 10% 88%;
+    --ring: 18 80% 50%;
+
+    --radius: 0.75rem;
+    /* Slightly rounder cards */
+
+    /* React Day Picker Overrides */
+    --rdp-cell-size: 40px;
+    --rdp-accent-color: hsl(18 80% 50%);
+    /* Hardcoded Burnt Orange to ensure override */
+    --rdp-background-color: hsl(30 20% 94%);
+    --rdp-outline: 2px solid var(--rdp-accent-color);
+    --rdp-selected-color: hsl(30 20% 98%);
   }
- 
+
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
- 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
- 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
- 
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
- 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
- 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
- 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
- 
+    /* Burnt Orange Theme (Dark) */
+    --background: 20 14.3% 4.1%;
+    --foreground: 30 20% 98%;
+
+    --card: 24 9.8% 10%;
+    --card-foreground: 30 20% 98%;
+
+    --popover: 24 9.8% 10%;
+    --popover-foreground: 30 20% 98%;
+
+    --primary: 18 80% 50%;
+    /* Burnt Orange remains vibrant */
+    --primary-foreground: 30 20% 98%;
+
+    --secondary: 12 6.5% 15.1%;
+    --secondary-foreground: 30 20% 98%;
+
+    --muted: 12 6.5% 15.1%;
+    --muted-foreground: 24 5.4% 63.9%;
+
+    --accent: 12 6.5% 15.1%;
+    --accent-foreground: 30 20% 98%;
+
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
- 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
+    --destructive-foreground: 30 20% 98%;
+
+    /* Success (for Published status) - Green */
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+
+    --border: 12 6.5% 15.1%;
+    --input: 12 6.5% 15.1%;
+    --ring: 18 80% 50%;
+
+    /* React Day Picker Overrides (Dark) */
+    --rdp-accent-color: hsl(18 80% 50%);
+    --rdp-background-color: hsl(12 6.5% 15.1%);
+    --rdp-selected-color: hsl(30 20% 98%);
   }
 }
- 
+
 @layer base {
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
   }
+
+  .font-tagesschrift {
+    font-family: 'Tagesschrift', cursive;
+  }
+}
+
+/* React Day Picker v9 Overrides */
+.rdp-root {
+  --rdp-accent-color: hsl(18 80% 50%) !important;
+  --rdp-accent-background-color: hsl(18 80% 50% / 0.15) !important;
+  --rdp-today-color: hsl(18 80% 50%) !important;
+  --rdp-range_start-date-background-color: hsl(18 80% 50%) !important;
+  --rdp-range_end-date-background-color: hsl(18 80% 50%) !important;
+}
+
+.rdp-button_previous,
+.rdp-button_next {
+  color: hsl(18 80% 50%) !important;
+}
+
+.rdp-button_previous svg,
+.rdp-button_next svg {
+  color: hsl(18 80% 50%) !important;
+  fill: hsl(18 80% 50%) !important;
+}
+
+.rdp-chevron {
+  fill: hsl(18 80% 50%) !important;
 }
