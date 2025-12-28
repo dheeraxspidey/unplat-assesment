@@ -13,8 +13,8 @@ if "?" in db_url:
 
 connect_args = {}
 if "aivencloud.com" in settings.DATABASE_URL:
-    # Standard PyMySQL SSL configuration for Aiven
-    connect_args["ssl"] = True
+    # PyMySQL expects ssl to be a dict (empty dict = use default SSL)
+    connect_args["ssl"] = {}
 
 engine = create_engine(
     db_url,
