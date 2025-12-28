@@ -50,7 +50,7 @@ class BookingService:
 
     @staticmethod
     def get_user_bookings(db: Session, user_id: int, skip: int = 0, limit: int = 100):
-        return db.query(Booking).filter(Booking.user_id == user_id).offset(skip).limit(limit).all()
+        return db.query(Booking).filter(Booking.user_id == user_id).order_by(Booking.id.desc()).offset(skip).limit(limit).all()
 
     @staticmethod
     def get_user_stats(db: Session, user_id: int) -> dict:
