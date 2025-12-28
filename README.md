@@ -1,5 +1,17 @@
 # EventFlow - Event Management System
 
+**[Live Demo Link 🚀](https://unplat-assesment.vercel.app/)**
+
+| Role | Email | Password |
+| :--- | :--- | :--- |
+| **Organizer** | `organizer@gmail.com` | `password123` |
+| **Attendee** | `attendee@gmail.com` | `password123` |
+
+<div align="center">
+  <img src="screenshots/explore.png" width="48%" alt="Explore Page" />
+  <img src="screenshots/organizer.png" width="48%" alt="Organizer Dashboard" />
+</div>
+
 A full-stack Event Management platform built with FastAPI (Backend) and React/Vite (Frontend).
 
 ## Features
