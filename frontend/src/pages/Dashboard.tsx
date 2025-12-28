@@ -81,6 +81,7 @@ export default function Dashboard() {
 
     const getImageUrl = (imageId?: string) => {
         if (!imageId) return "https://images.unsplash.com/photo-1459749411177-2a25413f312f?w=800&auto=format&fit=crop&q=60"
+        if (imageId.startsWith("http")) return imageId
         return `${import.meta.env.VITE_API_URL}/media/${imageId}`
     }
 
@@ -198,7 +199,7 @@ export default function Dashboard() {
                                             <div className="flex justify-between items-start">
                                                 <Badge className="bg-primary/90 hover:bg-primary">{booking.event.event_type}</Badge>
                                                 {new Date(booking.event.date) < new Date() && booking.status === "CONFIRMED" ? (
-                                                     <Badge variant="secondary">ENDED</Badge>
+                                                    <Badge variant="secondary">ENDED</Badge>
                                                 ) : (
                                                     <Badge variant={getStatusVariant(booking.status)} className={
                                                         booking.status === "CONFIRMED" ? "bg-green-600 hover:bg-green-700" : ""

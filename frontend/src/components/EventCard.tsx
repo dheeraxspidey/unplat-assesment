@@ -26,6 +26,7 @@ interface EventCardProps {
 // Helper: Get Image URL
 const getImageUrl = (imageId?: string) => {
     if (!imageId) return "https://images.unsplash.com/photo-1459749411177-2a25413f312f?w=800&auto=format&fit=crop&q=60"
+    if (imageId.startsWith("http")) return imageId
     return `${import.meta.env.VITE_API_URL}/media/${imageId}`
 }
 
