@@ -5,13 +5,19 @@ from .config import settings
 
 # Why: We need a connection to the MySQL database.
 # The URL is pulled from settings to support Docker/Local environments.
-# For Aiven MySQL, we often need SSL enabled.
+# For Aiven MySQL, we need to handle SSL and strip incompatible query parameters.
+db_url = settings.DATABASE_URL
+if "?" in db_url:
+    # PyMySQL doesn't support 'ssl-mode' as a query parameter in the URL
+    db_url = db_url.split("?")[0]
+
 connect_args = {}
 if "aivencloud.com" in settings.DATABASE_URL:
-    connect_args["ssl"] = {"ssl_mode": "REQUIRED"}
+    # Standard PyMySQL SSL configuration for Aiven
+    connect_args["ssl"] = True
 
 engine = create_engine(
-    settings.DATABASE_URL,
+    db_url,
     connect_args=connect_args
 )
 
