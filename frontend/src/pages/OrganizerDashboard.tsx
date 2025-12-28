@@ -37,7 +37,10 @@ import {
 import { useToast } from "@/components/ui/use-toast"
 import { Plus, BarChart3, Calendar as CalendarIcon, FileText, UploadCloud, Edit, Trash2, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, X, Upload, XCircle } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
-import { formatEventDateTime } from "@/lib/utils"
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { cn, formatEventDateTime } from "@/lib/utils"
+import { format } from "date-fns"
 
 interface Event {
     id: number
@@ -68,6 +71,38 @@ export default function OrganizerDashboard() {
     const fileInputRef = useRef<HTMLInputElement>(null)
 
 
+
+    const [startDate, setStartDate] = useState<Date | undefined>(undefined)
+    const [startTime, setStartTime] = useState("12:00")
+    const [endDate, setEndDate] = useState<Date | undefined>(undefined)
+    const [endTime, setEndTime] = useState("14:00")
+    const [isStartCalendarOpen, setIsStartCalendarOpen] = useState(false)
+    const [isEndCalendarOpen, setIsEndCalendarOpen] = useState(false)
+
+    // Edit State
+    const [editStartDate, setEditStartDate] = useState<Date | undefined>(undefined)
+    const [editStartTime, setEditStartTime] = useState("")
+    const [editEndDate, setEditEndDate] = useState<Date | undefined>(undefined)
+    const [editEndTime, setEditEndTime] = useState("")
+    const [isEditStartCalendarOpen, setIsEditStartCalendarOpen] = useState(false)
+    const [isEditEndCalendarOpen, setIsEditEndCalendarOpen] = useState(false)
+
+    useEffect(() => {
+        if (editingEvent) {
+            const start = new Date(editingEvent.date)
+            setEditStartDate(start)
+            setEditStartTime(format(start, "HH:mm"))
+
+            if (editingEvent.end_date) {
+                const end = new Date(editingEvent.end_date)
+                setEditEndDate(end)
+                setEditEndTime(format(end, "HH:mm"))
+            } else {
+                setEditEndDate(undefined)
+                setEditEndTime("")
+            }
+        }
+    }, [editingEvent])
 
     const [submitStatus, setSubmitStatus] = useState<"DRAFT" | "PUBLISHED">("DRAFT")
 
@@ -152,10 +187,7 @@ export default function OrganizerDashboard() {
         const formData = new FormData(e.currentTarget)
         formData.set("status", status)
 
-        const dateValue = formData.get("date") as string
-        const endDateValue = formData.get("end_date") as string
-
-        if (!dateValue || !endDateValue) {
+        if (!startDate || !endDate) {
             toast({
                 title: "Date Required",
                 description: "Please pick start and end dates.",
@@ -165,25 +197,26 @@ export default function OrganizerDashboard() {
             return
         }
 
-        if (new Date(dateValue) < new Date()) {
-            toast({
-                title: "Invalid Date",
-                description: "Start date cannot be in the past.",
-                variant: "destructive"
-            })
+        const dateStr = format(startDate, "yyyy-MM-dd")
+        const dateTime = new Date(`${dateStr}T${startTime}`)
+
+        const endDateStr = format(endDate, "yyyy-MM-dd")
+        const endDateTime = new Date(`${endDateStr}T${endTime}`)
+
+        if (dateTime < new Date()) {
+            toast({ title: "Invalid Date", description: "Start date cannot be in the past.", variant: "destructive" })
             setIsLoading(false)
             return
         }
 
-        if (new Date(endDateValue) <= new Date(dateValue)) {
-            toast({
-                title: "Invalid End Date",
-                description: "End date must be after start date.",
-                variant: "destructive"
-            })
+        if (endDateTime <= dateTime) {
+            toast({ title: "Invalid End Date", description: "End date must be after start date.", variant: "destructive" })
             setIsLoading(false)
             return
         }
+
+        formData.set("date", dateTime.toISOString())
+        formData.set("end_date", endDateTime.toISOString())
 
         try {
             await api.post("/api/events/", formData)
@@ -193,6 +226,10 @@ export default function OrganizerDashboard() {
             })
             setOpen(false)
             setSelectedFileName(null)
+            setStartDate(undefined)
+            setEndDate(undefined)
+            setStartTime("12:00")
+            setEndTime("14:00")
             e.currentTarget.reset()
             if (fileInputRef.current) fileInputRef.current.value = ""
             fetchMyEvents()
@@ -210,14 +247,17 @@ export default function OrganizerDashboard() {
 
 
         const formData = new FormData(e.currentTarget)
-        const dateValue = formData.get("date") as string
+        if (!editStartDate || !editEndDate) {
+            toast({ title: "Date Required", description: "Dates missing.", variant: "destructive" })
+            setIsLoading(false)
+            return
+        }
 
-        if (new Date(dateValue) < new Date()) {
-            toast({
-                title: "Invalid Date",
-                description: "You cannot update an event to a past date.",
-                variant: "destructive"
-            })
+        const editStart = new Date(`${format(editStartDate, "yyyy-MM-dd")}T${editStartTime}`)
+        const editEnd = new Date(`${format(editEndDate, "yyyy-MM-dd")}T${editEndTime}`)
+
+        if (editStart < new Date()) {
+            toast({ title: "Invalid Date", description: "Date cannot be in past", variant: "destructive" })
             setIsLoading(false)
             return
         }
@@ -225,8 +265,8 @@ export default function OrganizerDashboard() {
         const data = {
             title: formData.get("title"),
             event_type: formData.get("event_type"),
-            date: dateValue,
-            end_date: formData.get("end_date") as string,
+            date: editStart.toISOString(),
+            end_date: editEnd.toISOString(),
             location: formData.get("location"),
             total_seats: Number(formData.get("total_seats")),
             price: Number(formData.get("price")),
@@ -420,34 +460,64 @@ export default function OrganizerDashboard() {
                                                 </Select>
                                             </div>
                                             <div className="grid gap-2">
-                                                <div className="grid gap-2">
-                                                    <Label htmlFor="date">Start Date</Label>
-                                                    <Input
-                                                        id="date"
-                                                        name="date"
-                                                        type="datetime-local"
-                                                        required
-                                                        className="h-12"
-                                                        min={new Date().toISOString().slice(0, 16)}
-                                                    />
-                                                </div>
-                                                <div className="grid gap-2">
-                                                    <Label htmlFor="end_date">End Date</Label>
-                                                    <Input
-                                                        id="end_date"
-                                                        name="end_date"
-                                                        type="datetime-local"
-                                                        required
-                                                        className="h-12"
-                                                        min={new Date().toISOString().slice(0, 16)}
-                                                    />
-                                                </div>
+                                                <Label htmlFor="location">Location</Label>
+                                                <Input id="location" name="location" placeholder="Venue address" required className="h-12" />
                                             </div>
                                         </div>
 
-                                        <div className="grid gap-2">
-                                            <Label htmlFor="location">Location</Label>
-                                            <Input id="location" name="location" placeholder="Venue address" required className="h-12" />
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div className="grid gap-2">
+                                                <Label>Start Date</Label>
+                                                <div className="flex gap-2">
+                                                    <Popover open={isStartCalendarOpen} onOpenChange={setIsStartCalendarOpen}>
+                                                        <PopoverTrigger asChild>
+                                                            <Button
+                                                                variant={"outline"}
+                                                                className={cn("w-full justify-start text-left font-normal h-12", !startDate && "text-muted-foreground")}
+                                                            >
+                                                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                                                {startDate ? format(startDate, "PPP") : <span>Pick a date</span>}
+                                                            </Button>
+                                                        </PopoverTrigger>
+                                                        <PopoverContent className="w-auto p-0">
+                                                            <Calendar
+                                                                mode="single"
+                                                                selected={startDate}
+                                                                onSelect={(d) => { setStartDate(d); setIsStartCalendarOpen(false); }}
+                                                                disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0))}
+                                                                initialFocus
+                                                            />
+                                                        </PopoverContent>
+                                                    </Popover>
+                                                    <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="w-[110px] h-12" />
+                                                </div>
+                                            </div>
+                                            <div className="grid gap-2">
+                                                <Label>End Date</Label>
+                                                <div className="flex gap-2">
+                                                    <Popover open={isEndCalendarOpen} onOpenChange={setIsEndCalendarOpen}>
+                                                        <PopoverTrigger asChild>
+                                                            <Button
+                                                                variant={"outline"}
+                                                                className={cn("w-full justify-start text-left font-normal h-12", !endDate && "text-muted-foreground")}
+                                                            >
+                                                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                                                {endDate ? format(endDate, "PPP") : <span>Pick a date</span>}
+                                                            </Button>
+                                                        </PopoverTrigger>
+                                                        <PopoverContent className="w-auto p-0">
+                                                            <Calendar
+                                                                mode="single"
+                                                                selected={endDate}
+                                                                onSelect={(d) => { setEndDate(d); setIsEndCalendarOpen(false); }}
+                                                                disabled={(d) => d < (startDate || new Date())}
+                                                                initialFocus
+                                                            />
+                                                        </PopoverContent>
+                                                    </Popover>
+                                                    <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="w-[110px] h-12" />
+                                                </div>
+                                            </div>
                                         </div>
 
                                         <div className="grid grid-cols-2 gap-4">
@@ -736,32 +806,46 @@ export default function OrganizerDashboard() {
                                         </Select>
                                     </div>
                                     <div className="grid gap-2">
-                                        <Label htmlFor="edit-date">Start Date</Label>
-                                        <Input
-                                            id="edit-date"
-                                            name="date"
-                                            type="datetime-local"
-                                            defaultValue={editingEvent.date}
-                                            min={new Date().toISOString().slice(0, 16)}
-                                            className="h-12"
-                                            required
-                                        />
-                                    </div>
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="edit-end-date">End Date</Label>
-                                        <Input
-                                            id="edit-end-date"
-                                            name="end_date"
-                                            type="datetime-local"
-                                            defaultValue={editingEvent.end_date}
-                                            className="h-12"
-                                            required
-                                        />
+                                        <Label htmlFor="edit-location">Location</Label>
+                                        <Input id="edit-location" name="location" defaultValue={editingEvent.location} className="h-12" required />
                                     </div>
                                 </div>
-                                <div className="grid gap-2">
-                                    <Label htmlFor="edit-location">Location</Label>
-                                    <Input id="edit-location" name="location" defaultValue={editingEvent.location} className="h-12" required />
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="grid gap-2">
+                                        <Label>Start Date</Label>
+                                        <div className="flex gap-2">
+                                            <Popover open={isEditStartCalendarOpen} onOpenChange={setIsEditStartCalendarOpen}>
+                                                <PopoverTrigger asChild>
+                                                    <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal h-12", !editStartDate && "text-muted-foreground")}>
+                                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                                        {editStartDate ? format(editStartDate, "PPP") : <span>Pick a date</span>}
+                                                    </Button>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-auto p-0">
+                                                    <Calendar mode="single" selected={editStartDate} onSelect={(d) => { setEditStartDate(d); setIsEditStartCalendarOpen(false); }} disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0))} initialFocus />
+                                                </PopoverContent>
+                                            </Popover>
+                                            <Input type="time" value={editStartTime} onChange={(e) => setEditStartTime(e.target.value)} className="w-[110px] h-12" />
+                                        </div>
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label>End Date</Label>
+                                        <div className="flex gap-2">
+                                            <Popover open={isEditEndCalendarOpen} onOpenChange={setIsEditEndCalendarOpen}>
+                                                <PopoverTrigger asChild>
+                                                    <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal h-12", !editEndDate && "text-muted-foreground")}>
+                                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                                        {editEndDate ? format(editEndDate, "PPP") : <span>Pick a date</span>}
+                                                    </Button>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-auto p-0">
+                                                    <Calendar mode="single" selected={editEndDate} onSelect={(d) => { setEditEndDate(d); setIsEditEndCalendarOpen(false); }} disabled={(d) => d < (editStartDate || new Date())} initialFocus />
+                                                </PopoverContent>
+                                            </Popover>
+                                            <Input type="time" value={editEndTime} onChange={(e) => setEditEndTime(e.target.value)} className="w-[110px] h-12" />
+                                        </div>
+                                    </div>
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="grid gap-2">

@@ -46,7 +46,7 @@ export default function Login() {
             if (role === "ORGANIZER") {
                 navigate("/organizer")
             } else {
-                navigate("/dashboard")
+                navigate("/")
             }
 
         } catch (error) {
