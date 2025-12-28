@@ -13,12 +13,14 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Calendar, MapPin, Users } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
+import { formatEventDateTime } from "@/lib/utils"
 
 interface Event {
     id: number
     title: string
     description: string
     date: string
+    end_date?: string
     location: string
     total_seats: number
     available_seats: number
@@ -117,8 +119,10 @@ export default function EventDetail() {
                         <div className="flex items-center space-x-2 rounded-lg border p-3">
                             <Calendar className="h-5 w-5 text-primary" />
                             <div>
-                                <p className="text-xs text-muted-foreground">Date</p>
-                                <p className="font-medium">{new Date(event.date).toLocaleDateString()}</p>
+                                <p className="text-xs text-muted-foreground">Date & Time</p>
+                                <p className="font-medium">
+                                    {formatEventDateTime(event.date, event.end_date)}
+                                </p>
                             </div>
                         </div>
                         <div className="flex items-center space-x-2 rounded-lg border p-3">

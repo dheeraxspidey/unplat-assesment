@@ -1,4 +1,3 @@
-import * as React from "react"
 import {
     ToastProvider,
     ToastViewport,
@@ -6,7 +5,6 @@ import {
     ToastTitle,
     ToastDescription,
     ToastClose,
-    ToastAction,
 } from "./toast"
 import { useToast } from "@/components/ui/use-toast"
 

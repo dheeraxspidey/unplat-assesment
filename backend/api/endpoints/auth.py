@@ -1,7 +1,10 @@
 from datetime import timedelta
-from typing import Any
+from typing import Any, Optional
 import json
-from fastapi import APIRouter, Depends, HTTPException, status
+import shutil
+import uuid
+import os
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
@@ -14,6 +17,51 @@ from schemas.token import Token
 from schemas.user import UserCreate, UserResponse, PasswordChange
 
 router = APIRouter()
+
+@router.get("/me", response_model=UserResponse)
+def read_users_me(
+    current_user: User = Depends(deps.get_current_active_user),
+) -> Any:
+    """
+    Get current user.
+    """
+    return current_user
+
+@router.put("/profile", response_model=UserResponse)
+def update_user_profile(
+    *,
+    db: Session = Depends(get_db),
+    full_name: str = Form(...),
+    image_file: Optional[UploadFile] = File(None),
+    delete_image: bool = Form(False),
+    current_user: User = Depends(deps.get_current_active_user),
+) -> Any:
+    """
+    Update user profile.
+    """
+    current_user.full_name = full_name
+
+    if delete_image:
+        # Ideally delete old file too, but keeping it simple for now or strictly follow cleanup
+        current_user.profile_image_id = None
+    elif image_file:
+        # Create media directory if not exists
+        if not os.path.exists("media"):
+            os.makedirs("media")
+            
+        file_ext = image_file.filename.split(".")[-1]
+        file_name = f"{uuid.uuid4()}.{file_ext}"
+        file_path = os.path.join("media", file_name)
+        
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(image_file.file, buffer)
+            
+        current_user.profile_image_id = file_name
+
+    db.add(current_user)
+    db.commit()
+    db.refresh(current_user)
+    return current_user
 
 @router.post("/signup", response_model=UserResponse)
 def create_user(

@@ -1,5 +1,21 @@
 from fastapi import FastAPI
 from core.config import settings
+import logging
+from pydantic import ValidationError
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+try:
+    from core.config import settings
+    logger.info("Settings loaded successfully")
+except ValidationError as e:
+    logger.error(f"Pydantic Validation Error: {e.errors()}")
+    raise e
+except Exception as e:
+    logger.error(f"Error loading settings: {e}")
+    raise e
 
 from api.api import api_router
 from core.database import Base, engine

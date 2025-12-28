@@ -22,6 +22,8 @@ class User(Base):
     
     # Store explicit user interests as JSON string (e.g. '["Music", "Tech"]')
     interests = Column(String(500), default="[]")
+    
+    profile_image_id = Column(String(255), nullable=True)
 
     events = relationship("Event", back_populates="organizer")
     bookings = relationship("Booking", back_populates="user")

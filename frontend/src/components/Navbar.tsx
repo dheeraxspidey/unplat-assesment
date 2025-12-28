@@ -1,5 +1,5 @@
 import { Link, useNavigate, useLocation } from "react-router-dom"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
@@ -10,28 +10,28 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { CalendarDays, LayoutDashboard, LogOut, Ticket, Menu, Key, ShieldCheck } from "lucide-react"
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { useToast } from "@/components/ui/use-toast"
+import { CalendarDays, LayoutDashboard, LogOut, Ticket, Menu, Settings } from "lucide-react"
+// import { useToast } from "@/components/ui/use-toast"
+// import api from "@/lib/api" // api import might be unused if we only use it in fetchUser inside effect, but we need it.
 import api from "@/lib/api"
+import { ProfileDialog } from "@/components/ProfileDialog"
+
+interface UserProfile {
+    id: number
+    email: string
+    full_name: string
+    profile_image_id?: string
+    role: string
+}
 
 export default function Navbar() {
     const navigate = useNavigate()
     const location = useLocation()
     const token = localStorage.getItem("token")
-    const { toast } = useToast()
+    // const { toast } = useToast() // Unused currently
 
-    const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false)
-    const [isLoading, setIsLoading] = useState(false)
+    const [isProfileOpen, setIsProfileOpen] = useState(false)
+    const [currentUser, setCurrentUser] = useState<UserProfile | null>(null)
 
     const handleLogout = () => {
         localStorage.clear()
@@ -57,33 +57,25 @@ export default function Navbar() {
 
     const isActive = (path: string) => location.pathname === path
 
-    const handleChangePassword = async (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault()
-        setIsLoading(true)
-        const formData = new FormData(e.currentTarget)
-        const old_password = formData.get("old_password")
-        const new_password = formData.get("new_password")
-        const confirm_password = formData.get("confirm_password")
-
-        if (new_password !== confirm_password) {
-            toast({ title: "Passwords don't match", variant: "destructive" })
-            setIsLoading(false)
-            return
-        }
-
+    const fetchUser = async () => {
+        if (!token) return
         try {
-            await api.post("/api/auth/change-password", { old_password, new_password })
-            toast({ title: "Success", description: "Password changed successfully." })
-            setIsChangePasswordOpen(false)
-        } catch (error: any) {
-            toast({
-                title: "Failed",
-                description: error.response?.data?.detail || "Could not change password.",
-                variant: "destructive"
-            })
-        } finally {
-            setIsLoading(false)
+            const response = await api.get("/api/auth/me")
+            setCurrentUser(response.data)
+        } catch (error) {
+            console.error("Failed to fetch user", error)
         }
+    }
+
+    useEffect(() => {
+        fetchUser()
+    }, [token])
+
+    const getAvatarSrc = () => {
+        if (currentUser?.profile_image_id) {
+            return `${import.meta.env.VITE_API_URL}/media/${currentUser.profile_image_id}`
+        }
+        return `https://robohash.org/${userEmail}.png?set=set4&size=128x128`
     }
 
     return (
@@ -166,7 +158,7 @@ export default function Navbar() {
                                 <DropdownMenuTrigger asChild>
                                     <Button variant="ghost" className="relative h-9 w-9 rounded-full ring-2 ring-primary/10">
                                         <Avatar className="h-9 w-9">
-                                            <AvatarImage src={`https://robohash.org/${userEmail}.png?set=set4&size=128x128`} alt="@user" />
+                                            <AvatarImage src={getAvatarSrc()} alt="@user" className="object-cover" />
                                             <AvatarFallback className="bg-primary/5 text-primary">
                                                 {userEmail.substring(0, 2).toUpperCase()}
                                             </AvatarFallback>
@@ -176,7 +168,9 @@ export default function Navbar() {
                                 <DropdownMenuContent className="w-56" align="end" forceMount>
                                     <DropdownMenuLabel className="font-normal">
                                         <div className="flex flex-col space-y-1">
-                                            <p className="text-sm font-medium leading-none">Account</p>
+                                            <p className="text-sm font-medium leading-none">
+                                                {currentUser?.full_name || "Account"}
+                                            </p>
                                             <p className="text-xs leading-none text-muted-foreground">
                                                 {userEmail}
                                             </p>
@@ -193,8 +187,8 @@ export default function Navbar() {
                                             <CalendarDays className="mr-2 h-4 w-4" /> Organizer Studio
                                         </DropdownMenuItem>
                                     )}
-                                    <DropdownMenuItem onClick={() => setIsChangePasswordOpen(true)}>
-                                        <Key className="mr-2 h-4 w-4" /> Change Password
+                                    <DropdownMenuItem onClick={() => setIsProfileOpen(true)}>
+                                        <Settings className="mr-2 h-4 w-4" /> Profile Settings
                                     </DropdownMenuItem>
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
@@ -212,42 +206,11 @@ export default function Navbar() {
                 </div>
             </div>
 
-            {/* Change Password Dialog */}
-            <Dialog open={isChangePasswordOpen} onOpenChange={setIsChangePasswordOpen}>
-                <DialogContent className="sm:max-w-[425px]">
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2">
-                            <ShieldCheck className="h-5 w-5 text-primary" />
-                            Update Password
-                        </DialogTitle>
-                        <DialogDescription>
-                            Enter your current password and choose a secure new one.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <form onSubmit={handleChangePassword} className="space-y-4 py-4">
-                        <div className="grid gap-2">
-                            <Label htmlFor="old_password">Current Password</Label>
-                            <Input id="old_password" name="old_password" type="password" required />
-                        </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="new_password">New Password</Label>
-                            <Input id="new_password" name="new_password" type="password" required />
-                        </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="confirm_password">Confirm New Password</Label>
-                            <Input id="confirm_password" name="confirm_password" type="password" required />
-                        </div>
-                        <DialogFooter className="pt-4">
-                            <Button type="button" variant="outline" onClick={() => setIsChangePasswordOpen(false)}>
-                                Cancel
-                            </Button>
-                            <Button type="submit" disabled={isLoading}>
-                                {isLoading ? "Updating..." : "Update Password"}
-                            </Button>
-                        </DialogFooter>
-                    </form>
-                </DialogContent>
-            </Dialog>
+            <ProfileDialog
+                open={isProfileOpen}
+                onOpenChange={setIsProfileOpen}
+                onProfileUpdate={fetchUser}
+            />
         </header>
     )
 }

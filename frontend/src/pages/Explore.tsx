@@ -13,6 +13,7 @@ interface Event {
     id: number
     title: string
     date: string
+    end_date?: string
     location: string
     price: number
     image_id?: string

@@ -1,15 +1,16 @@
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Calendar, MapPin, Users, Ticket } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { Calendar, MapPin, Users } from "lucide-react"
 import { Link } from "react-router-dom"
+
 
 interface EventCardProps {
     event: {
         id: number
         title: string
         date: string
+        end_date?: string
         location: string
         price: number
         image_id?: string
@@ -30,9 +31,6 @@ const getImageUrl = (imageId?: string) => {
 
 export function EventCard({ event, action, variant = "default" }: EventCardProps) {
     const isSoldOut = (event.available_seats || 0) <= 0
-    const dateStr = new Date(event.date).toLocaleDateString(undefined, {
-        weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
-    })
 
     return (
         <Card className="group overflow-hidden transition-all hover:shadow-xl hover:border-primary/50 flex flex-col h-full border-muted-foreground/20">
@@ -73,9 +71,28 @@ export function EventCard({ event, action, variant = "default" }: EventCardProps
             </CardHeader>
 
             <CardContent className="p-4 pt-2 flex-grow space-y-2">
-                <div className="flex items-center text-sm text-muted-foreground">
-                    <Calendar className="w-4 h-4 mr-2 text-primary" />
-                    <span>{dateStr}</span>
+                <div className="flex flex-col space-y-1 text-sm text-muted-foreground">
+                    <div className="flex items-center">
+                        <Calendar className="w-4 h-4 mr-2 text-primary shrink-0" />
+                        <span className="font-medium text-primary">
+                            {new Date(event.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                            <span className="ml-1 text-muted-foreground font-normal">
+                                {new Date(event.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                        </span>
+                    </div>
+                    {event.end_date && (
+                        <div className="flex items-center">
+                            <div className="w-4 h-4 mr-2 shrink-0 opacity-0" /> {/* Spacer for alignment */}
+                            <span className="text-xs text-muted-foreground">
+                                to {new Date(event.end_date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) !== new Date(event.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
+                                    ? new Date(event.end_date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) + " "
+                                    : ""
+                                }
+                                {new Date(event.end_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                        </div>
+                    )}
                 </div>
 
                 {variant !== "booking" && (

@@ -27,6 +27,7 @@ class Event(Base):
     title = Column(String(255), index=True)
     description = Column(String(1000), nullable=True)
     date = Column(DateTime)
+    end_date = Column(DateTime)
     location = Column(String(255))
     
     total_seats = Column(Integer)

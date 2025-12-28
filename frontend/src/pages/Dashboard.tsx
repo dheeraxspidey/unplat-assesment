@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import api from "@/lib/api"
+import { formatEventDateTime } from "@/lib/utils"
 import { Link } from "react-router-dom"
 import {
     Card,
@@ -9,7 +10,7 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Ticket, Calendar, Clock, MapPin, Armchair, ChevronLeft, ChevronRight } from "lucide-react"
+import { Ticket, Calendar, MapPin, Armchair, ChevronLeft, ChevronRight } from "lucide-react"
 
 interface Booking {
     id: number
@@ -20,6 +21,7 @@ interface Booking {
         id: number
         title: string
         date: string
+        end_date?: string
         location: string
         image_id?: string
         price: number
@@ -177,7 +179,6 @@ export default function Dashboard() {
                 ) : (
                     <div className="space-y-6">
                         {bookings.map((booking) => {
-                            const eventDate = new Date(booking.event.date)
                             const totalPrice = (booking.event.price * booking.number_of_seats).toFixed(2)
 
                             return (
@@ -206,13 +207,9 @@ export default function Dashboard() {
                                             <h3 className="text-xl font-bold tracking-tight">{booking.event.title}</h3>
 
                                             <div className="grid grid-cols-2 gap-y-2 text-sm text-muted-foreground">
-                                                <div className="flex items-center">
+                                                <div className="flex items-center col-span-2">
                                                     <Calendar className="w-4 h-4 mr-2 text-primary/70" />
-                                                    {eventDate.toLocaleDateString()}
-                                                </div>
-                                                <div className="flex items-center">
-                                                    <Clock className="w-4 h-4 mr-2 text-primary/70" />
-                                                    {eventDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                    {formatEventDateTime(booking.event.date, booking.event.end_date)}
                                                 </div>
                                                 <div className="flex items-center col-span-2 sm:col-span-1">
                                                     <MapPin className="w-4 h-4 mr-2 text-primary/70" />
