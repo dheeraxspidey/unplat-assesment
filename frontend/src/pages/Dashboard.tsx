@@ -81,6 +81,7 @@ export default function Dashboard() {
 
     const getImageUrl = (imageId?: string) => {
         if (!imageId) return "https://images.unsplash.com/photo-1459749411177-2a25413f312f?w=800&auto=format&fit=crop&q=60"
+        if (imageId.startsWith("http")) return imageId
         return `${import.meta.env.VITE_API_URL}/media/${imageId}`
     }
 
@@ -197,11 +198,15 @@ export default function Dashboard() {
                                         <div className="space-y-4">
                                             <div className="flex justify-between items-start">
                                                 <Badge className="bg-primary/90 hover:bg-primary">{booking.event.event_type}</Badge>
-                                                <Badge variant={getStatusVariant(booking.status)} className={
-                                                    booking.status === "CONFIRMED" ? "bg-green-600 hover:bg-green-700" : ""
-                                                }>
-                                                    {formatStatus(booking.status)}
-                                                </Badge>
+                                                {new Date(booking.event.date) < new Date() && booking.status === "CONFIRMED" ? (
+                                                    <Badge variant="secondary">ENDED</Badge>
+                                                ) : (
+                                                    <Badge variant={getStatusVariant(booking.status)} className={
+                                                        booking.status === "CONFIRMED" ? "bg-green-600 hover:bg-green-700" : ""
+                                                    }>
+                                                        {formatStatus(booking.status)}
+                                                    </Badge>
+                                                )}
                                             </div>
 
                                             <h3 className="text-xl font-bold tracking-tight">{booking.event.title}</h3>
@@ -224,7 +229,7 @@ export default function Dashboard() {
 
                                         <div className="mt-6 flex justify-between items-center border-t pt-4">
                                             <span className="font-bold text-lg">Total: ${totalPrice}</span>
-                                            {booking.status === "CONFIRMED" && (
+                                            {booking.status === "CONFIRMED" && new Date(booking.event.date) > new Date() && (
                                                 <Button
                                                     variant="destructive"
                                                     size="sm"

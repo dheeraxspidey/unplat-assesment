@@ -84,7 +84,7 @@ Stores event information created by organizers.
 | `total_seats`     | `INTEGER`      |                          | Total capacity                       |
 | `available_seats` | `INTEGER`      |                          | Remaining seats                      |
 | `price`           | `FLOAT`        |                          | Ticket price                         |
-| `image_id`        | `VARCHAR(255)` | NULLABLE                 | Reference to event image             |
+| `image_id`        | `VARCHAR(255)` | NULLABLE                 | Reference to event image (Filename OR full URL) |
 | `event_type`      | `ENUM`         | NOT NULL, DEFAULT 'OTHER'| `CONCERT`, `WORKSHOP`, `CONFERENCE`, `THEATER`, `OTHER` |
 | `status`          | `ENUM`         | DEFAULT 'DRAFT'          | `DRAFT`, `PUBLISHED`, `CANCELLED`, `ENDED` |
 | `created_at`      | `DATETIME`     | DEFAULT CURRENT_TIMESTAMP| Creation timestamp                   |

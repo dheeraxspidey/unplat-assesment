@@ -15,7 +15,6 @@ class EventService:
     ) -> Event:
         import uuid
         import shutil
-        import requests
         import os
         from pathlib import Path
 
@@ -31,24 +30,8 @@ class EventService:
                 shutil.copyfileobj(image_file.file, buffer)
         
         elif image_url:
-            try:
-                response = requests.get(image_url, stream=True)
-                if response.status_code == 200:
-                    # Guess extension from url or content-type
-                    content_type = response.headers.get('content-type')
-                    ext = ".jpg" # Default
-                    if content_type == "image/png": ext = ".png"
-                    elif content_type == "image/jpeg": ext = ".jpg"
-                    elif content_type == "image/webp": ext = ".webp"
-                    
-                    image_id = f"{uuid.uuid4()}{ext}"
-                    file_path = MEDIA_DIR / image_id
-                    with open(file_path, "wb") as buffer:
-                        for chunk in response.iter_content(chunk_size=8192):
-                            buffer.write(chunk)
-            except Exception as e:
-                print(f"Failed to download image: {e}")
-
+            # Simply store the URL directly. Be resilient to ephemeral filesystems.
+            image_id = image_url
 
         event = Event(
             **event_dict,
