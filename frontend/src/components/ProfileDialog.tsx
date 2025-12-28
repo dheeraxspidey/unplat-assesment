@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useToast } from "@/components/ui/use-toast"
-import { User, Lock, Upload, Camera } from "lucide-react"
+import { Camera } from "lucide-react"
 import api from "@/lib/api"
 
 interface ProfileDialogProps {
@@ -32,7 +32,7 @@ interface UserProfile {
 export function ProfileDialog({ open, onOpenChange, onProfileUpdate }: ProfileDialogProps) {
     const { toast } = useToast()
     const [user, setUser] = useState<UserProfile | null>(null)
-    const [isLoading, setIsLoading] = useState(false)
+
     const [isSaving, setIsSaving] = useState(false)
 
     // Profile Form State
@@ -53,7 +53,7 @@ export function ProfileDialog({ open, onOpenChange, onProfileUpdate }: ProfileDi
 
     const fetchProfile = async () => {
         try {
-            setIsLoading(true)
+
             const response = await api.get("/api/auth/me")
             setUser(response.data)
             setFullName(response.data.full_name || "")
@@ -61,8 +61,6 @@ export function ProfileDialog({ open, onOpenChange, onProfileUpdate }: ProfileDi
         } catch (error) {
             console.error("Failed to fetch profile", error)
             toast({ title: "Error", description: "Failed to load profile", variant: "destructive" })
-        } finally {
-            setIsLoading(false)
         }
     }
 
