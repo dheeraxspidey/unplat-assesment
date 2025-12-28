@@ -1,4 +1,5 @@
-import { Routes, Route, Navigate, useLocation } from "react-router-dom"
+import React from "react"
+import { Routes, Route, Navigate } from "react-router-dom"
 import { Toaster } from "@/components/ui/toaster"
 import Dashboard from "@/pages/Dashboard"
 import Explore from "@/pages/Explore"
@@ -6,8 +7,6 @@ import OrganizerDashboard from "@/pages/OrganizerDashboard"
 import EventDetail from "@/pages/EventDetail"
 import Login from "@/pages/Login"
 import Signup from "@/pages/Signup"
-import { cn } from "@/lib/utils"
-// Navbar component will be defined below or imported
 import Navbar from "@/components/Navbar"
 
 function Layout({ children }: { children: React.ReactNode }) {
@@ -22,7 +21,7 @@ function Layout({ children }: { children: React.ReactNode }) {
     )
 }
 
-function PrivateRoute({ children, role }: { children: JSX.Element, role?: string }) {
+function PrivateRoute({ children, role }: { children: React.ReactElement, role?: string }) {
     const token = localStorage.getItem("token")
     const userRole = localStorage.getItem("role")
 

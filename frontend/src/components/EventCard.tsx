@@ -1,8 +1,7 @@
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Calendar, MapPin, Users, Ticket } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { Calendar, MapPin, Users } from "lucide-react"
 import { Link } from "react-router-dom"
 
 interface EventCardProps {
