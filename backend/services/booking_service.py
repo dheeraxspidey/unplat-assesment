@@ -22,6 +22,20 @@ class BookingService:
                 event.status = EventStatus.ENDED
                 db.commit()
                 raise HTTPException(status_code=400, detail="This event has already ended and cannot be booked")
+
+            # Check existing bookings for this user and event to prevent hoarding
+            existing_bookings = db.query(Booking).filter(
+                Booking.user_id == user_id,
+                Booking.event_id == booking_in.event_id,
+                Booking.status == BookingStatus.CONFIRMED
+            ).all()
+
+            total_booked_already = sum(b.number_of_seats for b in existing_bookings)
+            if total_booked_already + booking_in.number_of_seats > 10:
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"You can only book a maximum of 10 seats for this event. You already have {total_booked_already}."
+                )
             
             if event.available_seats < booking_in.number_of_seats:
                 raise HTTPException(status_code=400, detail="Not enough seats available")
