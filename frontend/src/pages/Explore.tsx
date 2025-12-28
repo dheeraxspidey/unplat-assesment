@@ -161,7 +161,7 @@ export default function Explore() {
                 <div className="flex items-center justify-between pb-4 overflow-x-auto gap-4">
                     <TabsList className="h-12 bg-muted/50 p-1">
                         <TabsTrigger value="ALL" className="h-full px-6 rounded-sm">All Events</TabsTrigger>
-                        {localStorage.getItem("role") !== "ORGANIZER" && (
+                        {localStorage.getItem("token") && localStorage.getItem("role") !== "ORGANIZER" && (
                             <TabsTrigger value="FOR_YOU" className="h-full px-6 rounded-sm font-semibold text-primary inline-flex items-center gap-2">
                                 <Compass className="h-4 w-4" /> For You
                             </TabsTrigger>

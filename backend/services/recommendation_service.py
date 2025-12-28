@@ -42,12 +42,35 @@ class RecommendationService:
                 pass
         
 
-        past_bookings = db.query(Booking).filter(Booking.user_id == user_id).all()
+        # Limit to last 50 bookings for efficiency & recency relevance
+        past_bookings = db.query(Booking).filter(Booking.user_id == user_id)\
+                          .order_by(Booking.id.desc())\
+                          .limit(50).all()
+        
+        type_counter = Counter()
+        keyword_counter = Counter()
+
         for booking in past_bookings:
             event = booking.event
-            user_keywords.update(RecommendationService._tokenize(event.title))
-            user_keywords.update(RecommendationService._tokenize(event.description))
-            user_keywords.add(event.event_type.value.lower())
+            # Weight event type heavily
+            type_counter[event.event_type.value.lower()] += 1
+            
+            # Extract keywords from title/desc
+            words = RecommendationService._tokenize(event.title)
+            # Give title words more weight than description (add them twice)
+            keyword_counter.update(words)
+            keyword_counter.update(words) 
+            
+            desc_words = RecommendationService._tokenize(event.description)
+            keyword_counter.update(desc_words)
+
+        # Build optimized profile: Top 3 favorite categories + Top 20 keywords
+        # This keeps the set small even if user has 1000 bookings
+        top_types = {t for t, _ in type_counter.most_common(3)}
+        top_keywords = {k for k, _ in keyword_counter.most_common(20)}
+        
+        user_keywords.update(top_types)
+        user_keywords.update(top_keywords)
 
 
         from datetime import datetime
