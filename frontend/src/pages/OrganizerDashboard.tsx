@@ -37,10 +37,7 @@ import {
 import { useToast } from "@/components/ui/use-toast"
 import { Plus, BarChart3, Calendar as CalendarIcon, FileText, UploadCloud, Edit, Trash2, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, X, Upload, XCircle } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
-import { Calendar } from "@/components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { cn, formatEventDateTime } from "@/lib/utils"
-import { format } from "date-fns"
+import { formatEventDateTime } from "@/lib/utils"
 
 interface Event {
     id: number
