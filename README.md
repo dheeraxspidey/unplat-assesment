@@ -99,3 +99,17 @@ To seed your remote production database (e.g. Render/Aiven), open `setup_data.sh
 ## Database Schema
 
 See [DATABASE_SCHEMA.md](./DATABASE_SCHEMA.md) for detailed Entity Relationship Diagrams and Table definitions.
+
+---
+
+## AI Tools & Methodology
+
+**Tools Used:** Antigravity IDE with Gemini 3 Pro
+
+**Usage Philosophy:**  
+I utilized AI as a Pair Programming partner to accelerate the implementation of boilerplate code and React/TypeScript syntax. My role was the **Navigator**, defining the application architecture, database schema, and core business logic, while using AI to assist with the "Driver" tasks of writing repetitive components and formatting.
+
+**Verification Process:**
+*   **Logic Auditing:** Every AI-generated function was manually reviewed to ensure it met the functional requirements, specifically for overbooking prevention and seat management.
+*   **Security & Constraints:** I manually implemented the role-based access control (Organizer vs. Attendee) and data validation logic to ensure the application remains secure beyond simple code generation.
+*   **Refinement:** I iterated on AI suggestions to align with the required MySQL schema and the specific Event Management constraints outlined in the prompt.
