@@ -64,6 +64,7 @@ Stores user account information for both organizers and attendees.
 | `role`            | `ENUM`         | NOT NULL, DEFAULT 'ATTENDEE' | `ORGANIZER` or `ATTENDEE`        |
 | `is_active`       | `BOOLEAN`      | DEFAULT TRUE             | Account status                       |
 | `interests`       | `VARCHAR(500)` | DEFAULT '[]'             | JSON array of user interests         |
+| `profile_image_id`| `VARCHAR(255)` | NULLABLE                 | Reference to profile image           |
 
 ---
 
@@ -77,7 +78,8 @@ Stores event information created by organizers.
 | `organizer_id`    | `INTEGER`      | FOREIGN KEY → `users.id` | Event creator                        |
 | `title`           | `VARCHAR(255)` | INDEXED                  | Event title                          |
 | `description`     | `VARCHAR(1000)`| NULLABLE                 | Event description                    |
-| `date`            | `DATETIME`     |                          | Event date and time                  |
+| `date`            | `DATETIME`     |                          | Event start date and time            |
+| `end_date`        | `DATETIME`     | NULLABLE                 | Event end date and time              |
 | `location`        | `VARCHAR(255)` |                          | Event venue                          |
 | `total_seats`     | `INTEGER`      |                          | Total capacity                       |
 | `available_seats` | `INTEGER`      |                          | Remaining seats                      |

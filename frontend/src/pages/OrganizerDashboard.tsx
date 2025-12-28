@@ -70,18 +70,8 @@ export default function OrganizerDashboard() {
     const [selectedFileName, setSelectedFileName] = useState<string | null>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
 
-    const [date, setDate] = useState<Date | undefined>(undefined)
-    const [time, setTime] = useState(() => {
-        const now = new Date()
-        now.setHours(now.getHours() + 1)
-        return format(now, "HH:mm")
-    })
-    const [endTime, setEndTime] = useState(() => {
-        const now = new Date()
-        now.setHours(now.getHours() + 3) // Default 2 hours duration
-        return format(now, "HH:mm")
-    })
-    const [isCalendarOpen, setIsCalendarOpen] = useState(false)
+
+
     const [submitStatus, setSubmitStatus] = useState<"DRAFT" | "PUBLISHED">("DRAFT")
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -165,42 +155,33 @@ export default function OrganizerDashboard() {
         const formData = new FormData(e.currentTarget)
         formData.set("status", status)
 
-        if (date) {
-            const dateStr = format(date, "yyyy-MM-dd")
-            const dateTime = new Date(`${dateStr}T${time}`)
-            const endDateTime = new Date(`${dateStr}T${endTime}`)
+        const dateValue = formData.get("date") as string
+        const endDateValue = formData.get("end_date") as string
 
-            // Handle case where end time is next day (e.g. 11 PM to 1 AM)
-            if (endDateTime < dateTime) {
-                endDateTime.setDate(endDateTime.getDate() + 1)
-            }
-
-            if (dateTime < new Date()) {
-                toast({
-                    title: "Invalid Date",
-                    description: "You cannot create an event in the past. Please check the time.",
-                    variant: "destructive"
-                })
-                setIsLoading(false)
-                return
-            }
-
-            if (endDateTime <= dateTime) {
-                toast({
-                    title: "Invalid End Time",
-                    description: "End time must be after start time.",
-                    variant: "destructive"
-                })
-                setIsLoading(false)
-                return
-            }
-
-            formData.set("date", dateTime.toISOString())
-            formData.set("end_date", endDateTime.toISOString())
-        } else {
+        if (!dateValue || !endDateValue) {
             toast({
                 title: "Date Required",
-                description: "Please pick a date for your event.",
+                description: "Please pick start and end dates.",
+                variant: "destructive"
+            })
+            setIsLoading(false)
+            return
+        }
+
+        if (new Date(dateValue) < new Date()) {
+            toast({
+                title: "Invalid Date",
+                description: "Start date cannot be in the past.",
+                variant: "destructive"
+            })
+            setIsLoading(false)
+            return
+        }
+
+        if (new Date(endDateValue) <= new Date(dateValue)) {
+            toast({
+                title: "Invalid End Date",
+                description: "End date must be after start date.",
                 variant: "destructive"
             })
             setIsLoading(false)
@@ -215,10 +196,7 @@ export default function OrganizerDashboard() {
             })
             setOpen(false)
             setSelectedFileName(null)
-            setDate(undefined)
-            const now = new Date()
-            now.setHours(now.getHours() + 1)
-            setTime(format(now, "HH:mm"))
+            e.currentTarget.reset()
             if (fileInputRef.current) fileInputRef.current.value = ""
             fetchMyEvents()
         } catch (error) {
@@ -445,56 +423,28 @@ export default function OrganizerDashboard() {
                                                 </Select>
                                             </div>
                                             <div className="grid gap-2">
-                                                <Label>Date & Time</Label>
-                                                <div className="flex gap-2">
-                                                    <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
-                                                        <PopoverTrigger asChild>
-                                                            <Button
-                                                                variant={"outline"}
-                                                                className={cn(
-                                                                    "w-full justify-start text-left font-normal h-12",
-                                                                    !date && "text-muted-foreground"
-                                                                )}
-                                                            >
-                                                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                                                {date ? format(date, "PPP") : <span>Pick a date</span>}
-                                                            </Button>
-                                                        </PopoverTrigger>
-                                                        <PopoverContent className="w-auto p-0">
-                                                            <Calendar
-                                                                mode="single"
-                                                                selected={date}
-                                                                onSelect={(newDate) => {
-                                                                    setDate(newDate)
-                                                                    setIsCalendarOpen(false)
-                                                                }}
-                                                                initialFocus
-                                                                disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
-                                                            />
-                                                        </PopoverContent>
-                                                    </Popover>
+                                                <div className="grid gap-2">
+                                                    <Label htmlFor="date">Start Date</Label>
                                                     <Input
-                                                        type="time"
-                                                        value={time}
-                                                        onChange={(e) => setTime(e.target.value)}
-                                                        className={cn(
-                                                            "w-[120px] h-12",
-                                                            date && format(date, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd") &&
-                                                            time < format(new Date(), "HH:mm") && "border-destructive text-destructive"
-                                                        )}
-                                                    />
-                                                    <span className="flex items-center text-muted-foreground">-</span>
-                                                    <Input
-                                                        type="time"
-                                                        value={endTime}
-                                                        onChange={(e) => setEndTime(e.target.value)}
-                                                        className="w-[120px] h-12"
+                                                        id="date"
+                                                        name="date"
+                                                        type="datetime-local"
+                                                        required
+                                                        className="h-12"
+                                                        min={new Date().toISOString().slice(0, 16)}
                                                     />
                                                 </div>
-                                                {date && format(date, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd") &&
-                                                    time < format(new Date(), "HH:mm") && (
-                                                        <p className="text-[10px] text-destructive font-medium">Selected time is in the past for today.</p>
-                                                    )}
+                                                <div className="grid gap-2">
+                                                    <Label htmlFor="end_date">End Date</Label>
+                                                    <Input
+                                                        id="end_date"
+                                                        name="end_date"
+                                                        type="datetime-local"
+                                                        required
+                                                        className="h-12"
+                                                        min={new Date().toISOString().slice(0, 16)}
+                                                    />
+                                                </div>
                                             </div>
                                         </div>
 
