@@ -5,7 +5,15 @@ from .config import settings
 
 # Why: We need a connection to the MySQL database.
 # The URL is pulled from settings to support Docker/Local environments.
-engine = create_engine(settings.DATABASE_URL)
+# For Aiven MySQL, we often need SSL enabled.
+connect_args = {}
+if "aivencloud.com" in settings.DATABASE_URL:
+    connect_args["ssl"] = {"ssl_mode": "REQUIRED"}
+
+engine = create_engine(
+    settings.DATABASE_URL,
+    connect_args=connect_args
+)
 
 # Why: Each request should have its own database session.
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
