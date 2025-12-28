@@ -7,6 +7,7 @@ class EventBase(BaseModel):
     title: str
     description: Optional[str] = None
     date: datetime
+    end_date: Optional[datetime] = None
     location: str
     total_seats: int = Field(gt=0, description="Total seats must be greater than 0")
     price: float = Field(ge=0, description="Price must be non-negative")
@@ -19,6 +20,7 @@ class EventUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
     date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
     location: Optional[str] = None
     total_seats: Optional[int] = Field(None, gt=0)
     price: Optional[float] = Field(None, ge=0)

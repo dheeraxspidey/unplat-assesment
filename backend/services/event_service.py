@@ -66,9 +66,19 @@ class EventService:
         from datetime import datetime
         # Compare in UTC for consistency with frontend timestamps
         now = datetime.utcnow()
+        
+        # Mark as ENDED if end_date has passed (or date has passed if end_date doesn't exist/logic fallback)
+        # Using a slightly complex condition:
+        # If end_date is present, check end_date < now
+        # If end_date is null (legacy?), check date < now
+        from sqlalchemy import or_
+        
         db.query(Event).filter(
             Event.status == EventStatus.PUBLISHED,
-            Event.date < now
+            or_(
+                Event.end_date < now,
+                (Event.end_date == None) & (Event.date < now)
+            )
         ).update({Event.status: EventStatus.ENDED}, synchronize_session=False)
         db.commit()
 

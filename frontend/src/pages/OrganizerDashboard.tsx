@@ -39,13 +39,14 @@ import { Plus, BarChart3, Calendar as CalendarIcon, FileText, UploadCloud, Edit,
 import { Badge } from "@/components/ui/badge"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { cn } from "@/lib/utils"
+import { cn, formatEventDateTime } from "@/lib/utils"
 import { format } from "date-fns"
 
 interface Event {
     id: number
     title: string
     date: string
+    end_date: string
     location: string
     total_seats: number
     available_seats: number
@@ -73,6 +74,11 @@ export default function OrganizerDashboard() {
     const [time, setTime] = useState(() => {
         const now = new Date()
         now.setHours(now.getHours() + 1)
+        return format(now, "HH:mm")
+    })
+    const [endTime, setEndTime] = useState(() => {
+        const now = new Date()
+        now.setHours(now.getHours() + 3) // Default 2 hours duration
         return format(now, "HH:mm")
     })
     const [isCalendarOpen, setIsCalendarOpen] = useState(false)
@@ -162,6 +168,12 @@ export default function OrganizerDashboard() {
         if (date) {
             const dateStr = format(date, "yyyy-MM-dd")
             const dateTime = new Date(`${dateStr}T${time}`)
+            const endDateTime = new Date(`${dateStr}T${endTime}`)
+
+            // Handle case where end time is next day (e.g. 11 PM to 1 AM)
+            if (endDateTime < dateTime) {
+                endDateTime.setDate(endDateTime.getDate() + 1)
+            }
 
             if (dateTime < new Date()) {
                 toast({
@@ -173,7 +185,18 @@ export default function OrganizerDashboard() {
                 return
             }
 
+            if (endDateTime <= dateTime) {
+                toast({
+                    title: "Invalid End Time",
+                    description: "End time must be after start time.",
+                    variant: "destructive"
+                })
+                setIsLoading(false)
+                return
+            }
+
             formData.set("date", dateTime.toISOString())
+            formData.set("end_date", endDateTime.toISOString())
         } else {
             toast({
                 title: "Date Required",
@@ -228,6 +251,7 @@ export default function OrganizerDashboard() {
             title: formData.get("title"),
             event_type: formData.get("event_type"),
             date: dateValue,
+            end_date: formData.get("end_date") as string,
             location: formData.get("location"),
             total_seats: Number(formData.get("total_seats")),
             price: Number(formData.get("price")),
@@ -459,6 +483,13 @@ export default function OrganizerDashboard() {
                                                             time < format(new Date(), "HH:mm") && "border-destructive text-destructive"
                                                         )}
                                                     />
+                                                    <span className="flex items-center text-muted-foreground">-</span>
+                                                    <Input
+                                                        type="time"
+                                                        value={endTime}
+                                                        onChange={(e) => setEndTime(e.target.value)}
+                                                        className="w-[120px] h-12"
+                                                    />
                                                 </div>
                                                 {date && format(date, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd") &&
                                                     time < format(new Date(), "HH:mm") && (
@@ -622,7 +653,7 @@ export default function OrganizerDashboard() {
                                         <TableCell>
                                             <div className="font-medium">{event.title}</div>
                                             <div className="text-xs text-muted-foreground">
-                                                {new Date(event.date).toLocaleDateString()} • {new Date(event.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                {formatEventDateTime(event.date, event.end_date)}
                                             </div>
                                             <div className="text-xs text-muted-foreground uppercase mt-1">{event.event_type}</div>
                                         </TableCell>
@@ -758,13 +789,24 @@ export default function OrganizerDashboard() {
                                         </Select>
                                     </div>
                                     <div className="grid gap-2">
-                                        <Label htmlFor="edit-date">Date</Label>
+                                        <Label htmlFor="edit-date">Start Date</Label>
                                         <Input
                                             id="edit-date"
                                             name="date"
                                             type="datetime-local"
                                             defaultValue={editingEvent.date}
                                             min={new Date().toISOString().slice(0, 16)}
+                                            className="h-12"
+                                            required
+                                        />
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="edit-end-date">End Date</Label>
+                                        <Input
+                                            id="edit-end-date"
+                                            name="end_date"
+                                            type="datetime-local"
+                                            defaultValue={editingEvent.end_date}
                                             className="h-12"
                                             required
                                         />

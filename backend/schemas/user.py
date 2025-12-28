@@ -22,6 +22,7 @@ class UserLogin(BaseModel):
 class UserResponse(UserBase):
     id: int
     is_active: bool
+    profile_image_id: Optional[str] = None
 
     class Config:
         from_attributes = True
